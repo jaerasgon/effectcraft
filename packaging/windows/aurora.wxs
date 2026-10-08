@@ -26,9 +26,9 @@
 
     <Icon Id="AuroraIcon.ico" SourceFile="$(var.IconPath)" />
     <Property Id="ARPPRODUCTICON" Value="AuroraIcon.ico" />
-    <Property Id="ARPURLINFOABOUT" Value="https://github.com/jaerasgon/effectcraft" />
-    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/jaerasgon/effectcraft" />
-    <Property Id="ARPHELPLINK" Value="https://github.com/jaerasgon/effectcraft/issues" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/jaerasgon/aurora" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/jaerasgon/aurora" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/jaerasgon/aurora/issues" />
 
     <StandardDirectory Id="ProgramFiles6432Folder">
       <Directory Id="INSTALLFOLDER" Name="Aurora" />

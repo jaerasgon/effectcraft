@@ -164,7 +164,7 @@ See [docs/agents.md](docs/agents.md) and [docs/control-protocol.md](docs/control
 
 ## Get started
 
-Installers for each version are on the [Releases](https://github.com/jaerasgon/effectcraft/releases)
+Installers for each version are on the [Releases](https://github.com/jaerasgon/aurora/releases)
 page: a universal macOS app; Windows MSIs and portable zips for x64, x86 and ARM64; and Linux
 AppImage, deb, rpm and tar.gz for x86_64 and aarch64. The Windows ARM64 build runs natively on
 Windows on ARM, without x64 emulation. CI installs that MSI on Windows 11 ARM64 hardware, checks
@@ -174,7 +174,7 @@ or run the test suite natively on ARM64 yet, so please report anything that beha
 To build it yourself you need [Rust](https://rustup.rs/) 1.95 or newer.
 
 ```sh
-git clone https://github.com/jaerasgon/effectcraft
+git clone https://github.com/jaerasgon/aurora
 cd aurora
 cargo run --release -p aurora          # the app (add `-- --demo` to open the demo project)
 cargo run --release -p aurora-cli -- render --out intro.mp4    # render the demo headless
@@ -204,7 +204,7 @@ what breaks. It isn't yet a replacement for After Effects on client work. In par
 
 The [ROADMAP](ROADMAP.md) has the plan and [docs/gaps.md](docs/gaps.md) the full, honest
 assessment. The web build ([docs/web.md](docs/web.md)) runs the full app in the browser.
-[Bug reports](https://github.com/jaerasgon/effectcraft/issues) are the most useful thing you can
+[Bug reports](https://github.com/jaerasgon/aurora/issues) are the most useful thing you can
 send us right now.
 
 ## How it's made
@@ -233,4 +233,4 @@ The Aurora name and logos in [`docs/brand/`](docs/brand/) are original work unde
 
 ## Star history
 
-[![Star History Chart](https://api.star-history.com/svg?repos=jaerasgon/effectcraft&type=Date&legend=top-left)](https://www.star-history.com/?repos=jaerasgon%2Feffectcraft&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=jaerasgon/aurora&type=Date&legend=top-left)](https://www.star-history.com/?repos=jaerasgon%2Faurora&type=date&legend=top-left)
