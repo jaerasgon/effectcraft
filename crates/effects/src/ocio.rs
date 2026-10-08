@@ -24,10 +24,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use effectcraft_color::ColorSpace;
-use effectcraft_color::space::{invert, mul, mul_vec, rgb_to_xyz};
-use effectcraft_keyframe::Value;
-use effectcraft_project::ParamUi;
+use aurora_color::ColorSpace;
+use aurora_color::space::{invert, mul, mul_vec, rgb_to_xyz};
+use aurora_keyframe::Value;
+use aurora_project::ParamUi;
 use rayon::prelude::*;
 
 use crate::util::unpremul;
@@ -566,7 +566,7 @@ pub const VIEWS: &[&str] = &["Standard", "Tone Mapped", "Raw"];
 
 /// Configuration popup: the built-in config, or a custom `.ocio` file (Config File: a path or
 /// the config's text; spaces chosen by name, see [`crate::ocio_config`]).
-pub const CONFIGS: &[&str] = &["Built-in (EffectCraft minimal)", "Custom (.ocio file)"];
+pub const CONFIGS: &[&str] = &["Built-in (Aurora minimal)", "Custom (.ocio file)"];
 
 /// Built-in looks: CDLs applied in ACEScct.
 pub fn looks() -> Vec<(&'static str, Cdl)> {
@@ -1322,7 +1322,7 @@ pub fn specs() -> Vec<EffectSpec> {
             "OCIO Look Transform",
             cc,
             vec![
-                p("config", "Configuration", Value::Enum(0), popup(&["Built-in (EffectCraft minimal)"])),
+                p("config", "Configuration", Value::Enum(0), popup(&["Built-in (Aurora minimal)"])),
                 space_param("source", "Source", acescg),
                 space_param("destination", "Destination", acescg),
                 p("look", "Look", Value::Enum(0), popup(&look_opts)),

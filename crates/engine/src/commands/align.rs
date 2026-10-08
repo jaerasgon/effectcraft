@@ -6,10 +6,10 @@
 //! Dimensions writes X/Y Position), at the current time (a key when Position is animated). All
 //! moves are one undo step.
 
-use effectcraft_geom::{Mat4, Vec3};
-use effectcraft_keyframe::Value as KValue;
-use effectcraft_project::{ItemId, LayerId};
-use effectcraft_render::EvalCtx;
+use aurora_geom::{Mat4, Vec3};
+use aurora_keyframe::Value as KValue;
+use aurora_project::{ItemId, LayerId};
+use aurora_render::EvalCtx;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, has_layers, layer_mut, layers_p, str_p};
@@ -33,7 +33,7 @@ fn placed(s: &Session, cid: ItemId, ids: &[LayerId]) -> Result<Vec<Placed>> {
         if l.transform().is_none() {
             continue;
         }
-        let Some(b) = effectcraft_render::content_bounds(&ctx, l) else { continue };
+        let Some(b) = aurora_render::content_bounds(&ctx, l) else { continue };
         let w = ctx.world_matrix(l);
         let pts = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].map(|p| w.apply(Vec3::from([p[0], p[1], 0.0])));
         let (mut x0, mut y0, mut x1, mut y1) = (f64::INFINITY, f64::INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY);

@@ -11,15 +11,15 @@
 //! overlay, the segmentation span bar and the view / Freeze buttons; the Roto Brush and Refine
 //! Edge tools paint their strokes here (see [`super::roto_tool`]).
 
-use effectcraft_engine::effects::paint;
-use effectcraft_engine::project::{Layer, LayerId};
-use effectcraft_engine::render::{EvalCtx, RenderOpts, Renderer};
+use aurora_engine::effects::paint;
+use aurora_engine::project::{Layer, LayerId};
+use aurora_engine::render::{EvalCtx, RenderOpts, Renderer};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
 use crate::state::Tool;
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 /// A stroke being drawn.
 #[derive(Clone, Debug)]
@@ -44,7 +44,7 @@ fn tex_id() -> egui::Id {
 }
 
 /// The layer shown: the opened one, else the first selected layer.
-pub fn current_layer(app: &EffectcraftApp) -> Option<Layer> {
+pub fn current_layer(app: &AuroraApp) -> Option<Layer> {
     let comp = app.session.active_comp()?;
     let id = app.ui.layer_panel.map(LayerId).filter(|id| comp.layer(*id).is_some()).or_else(|| app.session.state.selected_layers.first().copied())?;
     comp.layer(id).cloned()
@@ -61,7 +61,7 @@ fn default_view(layer: &Layer, tool: Tool) -> usize {
     }
 }
 
-pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let p = ui.painter().with_clip_rect(rect);
@@ -71,7 +71,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
         app.auto.add("layerPanel.empty", rect, "Layer panel (empty)");
         return;
     };
-    let comp = app.session.project.comp_arc(cid).unwrap_or_else(|| effectcraft_engine::project::Comp::new(1, 1, Default::default(), Default::default()).into());
+    let comp = app.session.project.comp_arc(cid).unwrap_or_else(|| aurora_engine::project::Comp::new(1, 1, Default::default(), Default::default()).into());
     let time = app.session.time();
     let fx_count = layer.effects().map(|f| f.groups().count()).unwrap_or(0);
     let view = app.ui.layer_view.map(|v| v.min(fx_count)).unwrap_or_else(|| default_view(&layer, app.ui.tool));
@@ -113,7 +113,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     // Canvas.
     let area = Rect::from_min_max(pos2(rect.min.x, top.max.y), pos2(rect.max.x, canvas_bottom));
     p.rect_filled(area, 0.0, t.pasteboard);
-    let (w, h) = effectcraft_engine::render::source_size(&app.session.project, &layer);
+    let (w, h) = aurora_engine::render::source_size(&app.session.project, &layer);
     let (lw, lh) = if w == 0 { (comp.width as f64, comp.height as f64) } else { (w as f64, h as f64) };
     let zoom = ((area.width() - 40.0) as f64 / lw).min((area.height() - 40.0) as f64 / lh).max(0.01);
     let origin = area.center() - vec2((lw * zoom / 2.0) as f32, (lh * zoom / 2.0) as f32);

@@ -2,7 +2,7 @@
 //! plan is shared, the raster runs on each side. Direct on a buffer (full and half resolution)
 //! and composited at 8 and 32 bpc (`tests_fx_sim`'s harness).
 
-use effectcraft_keyframe::Value;
+use aurora_keyframe::Value;
 
 use crate::tests::n;
 use crate::tests_fx_sim::{case, composited, e, off, on};

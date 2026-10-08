@@ -5,9 +5,9 @@ use std::cell::RefCell;
 use std::mem::ManuallyDrop;
 use std::sync::Arc;
 
+use aurora_engine::project::Project;
+use aurora_engine::{ScriptRequest, Session};
 use boa_engine::{Context, JsNativeError, JsResult, JsString, JsValue, NativeFunction, Source, js_string};
-use effectcraft_engine::project::Project;
-use effectcraft_engine::{ScriptRequest, Session};
 use serde_json::{Value as J, json};
 
 const PRELUDE: &str = include_str!("prelude.js");
@@ -135,7 +135,7 @@ fn native_exec(_: &JsValue, args: &[JsValue], ctx: &mut Context) -> JsResult<JsV
 /// Run a command for a script: the `comp` it targets is active while it runs (commands act on
 /// the active comp), then the user's active comp comes back.
 pub(crate) fn exec(s: &mut Session, id: &str, params: J) -> Result<J, String> {
-    use effectcraft_engine::project::ItemId;
+    use aurora_engine::project::ItemId;
     let target = params.get("comp").and_then(J::as_u64).map(ItemId).filter(|c| s.project.comp(*c).is_some());
     let prev = s.state.active_comp;
     if let Some(c) = target
@@ -170,7 +170,7 @@ fn native_query(_: &JsValue, args: &[JsValue], ctx: &mut Context) -> JsResult<Js
     let a = arg_json(args, 1, ctx)?;
     let r = with_active(|act| match kind.as_str() {
         "app" => Ok(json!({
-            "version": format!("26.0 (EffectCraft {})", env!("CARGO_PKG_VERSION")),
+            "version": format!("26.0 (Aurora {})", env!("CARGO_PKG_VERSION")),
             "buildName": env!("CARGO_PKG_VERSION"),
             "scriptName": act.name,
             "allowFiles": act.session.prefs.scripting.allow_scripts_write_files,
@@ -357,7 +357,7 @@ fn native_file(_: &JsValue, args: &[JsValue], ctx: &mut Context) -> JsResult<JsV
                 Ok(json!(r.is_ok()))
             }
             "network" => Err(if s.prefs.scripting.allow_scripts_write_files {
-                "network access from scripts is not supported in EffectCraft".to_string()
+                "network access from scripts is not supported in Aurora".to_string()
             } else {
                 format!("scripts can't access the network unless {GATE} is on")
             }),

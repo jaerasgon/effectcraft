@@ -4,9 +4,9 @@
 
 use std::sync::Arc;
 
-use effectcraft_project::{Footage, FootageKind, ItemId};
-use effectcraft_raster::Image;
-use effectcraft_time::{FrameRate, Tick};
+use aurora_project::{Footage, FootageKind, ItemId};
+use aurora_raster::Image;
+use aurora_time::{FrameRate, Tick};
 use serde_json::json;
 
 use crate::Session;

@@ -1,6 +1,6 @@
 //! Edit ▸ Keyboard Shortcuts: After Effects' visual shortcut editor.
 //!
-//! Top: the preset menu (EffectCraft Default = After Effects' defaults, read-only; custom presets
+//! Top: the preset menu (Aurora Default = After Effects' defaults, read-only; custom presets
 //! can be duplicated, renamed, deleted, imported and exported) and the search field. Middle: an
 //! on-screen keyboard for the toggled (or held) modifiers, keys coloured by what they run in
 //! that combination: purple for application-wide commands, green for panel-specific ones, both
@@ -15,12 +15,12 @@
 //! `shortcuts.rename`, `shortcuts.delete`, `shortcuts.import`, `shortcuts.export`,
 //! `shortcuts.resetPreset`, `shortcuts.close`.
 
-use effectcraft_engine::shortcuts::{APP_SCOPE, Bindable, DEFAULT_PRESET, normalize};
+use aurora_engine::shortcuts::{APP_SCOPE, Bindable, DEFAULT_PRESET, normalize};
 use egui::{Align2, Color32, Rect, RichText, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::{Value, json};
 
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 /// Editor state (in `DialogState`).
 #[derive(Clone, Debug, Default)]
@@ -43,13 +43,13 @@ pub struct EditorState {
 const APP_COLOR: Color32 = Color32::from_rgb(0x8e, 0x6c, 0xe8);
 const PANEL_COLOR: Color32 = Color32::from_rgb(0x3f, 0xa8, 0x6c);
 
-pub fn open(app: &mut EffectcraftApp) {
+pub fn open(app: &mut AuroraApp) {
     app.dialog_state.shortcuts = EditorState::default();
     app.dialog = Some(Dialog::Shortcuts);
 }
 
 /// `true` while the editor records keys (the dispatcher must not close the dialog on Escape).
-pub fn recording(app: &EffectcraftApp) -> bool {
+pub fn recording(app: &AuroraApp) -> bool {
     app.dialog == Some(Dialog::Shortcuts) && app.dialog_state.shortcuts.recording
 }
 
@@ -191,7 +191,7 @@ const SIDE_KEYS: &[(&str, &str, f32, f32)] = &[
     ("→", "ArrowRight", 2.0, 5.0),
 ];
 
-pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn show(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut st = std::mem::take(&mut app.dialog_state.shortcuts);
     let mut run: Vec<(String, Value)> = vec![];
     let mut close = false;
@@ -319,7 +319,7 @@ pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
         let gap = 3.0;
         let (area, _) = ui.allocate_exact_size(vec2(ui.available_width(), unit * 6.0 + gap * 6.0 + 4.0), Sense::hover());
         let p = ui.painter_at(area);
-        let draw_key = |app: &mut EffectcraftApp, r: Rect, label: &str, name: &str, st: &mut EditorState| {
+        let draw_key = |app: &mut AuroraApp, r: Rect, label: &str, name: &str, st: &mut EditorState| {
             let mod_idx = match name {
                 "#ctrl" => Some(0),
                 "#cmd" => Some(1),

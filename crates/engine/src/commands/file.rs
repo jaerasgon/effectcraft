@@ -1,7 +1,7 @@
 //! File menu.
 
-use effectcraft_color::Label;
-use effectcraft_project::{FootageKind, ItemId, ItemKind, LayerSource, Project};
+use aurora_color::Label;
+use aurora_project::{FootageKind, ItemId, ItemKind, LayerSource, Project};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, always, bad, str_p};
@@ -31,7 +31,7 @@ fn demo(s: &mut Session, _: &Value) -> Result<Value> {
     s.replace_project(p, None);
     if let Some(id) = s.project.items.values().find(|i| i.name == crate::demo::MAIN_COMP).map(|i| i.id) {
         s.open_comp(id);
-        s.set_time(effectcraft_time::Tick::from_seconds_f64(2.5));
+        s.set_time(aurora_time::Tick::from_seconds_f64(2.5));
     }
     Ok(json!({"comp": s.state.active_comp.map(|c| c.0)}))
 }
@@ -42,15 +42,15 @@ pub(crate) fn open(s: &mut Session, p: &Value) -> Result<Value> {
     let text = String::from_utf8(bytes).map_err(|_| EngineError::Other("not a text project file".into()))?;
     // XML copies (File ▸ Save a Copy As XML…) open like the JSON project.
     let text = if crate::xml_project::is_xml(&text) { crate::xml_project::from_xml(&text).map_err(EngineError::Other)? } else { text };
-    let proj = Project::from_json(&text).map_err(|e| EngineError::Other(format!("{path} is not a project EffectCraft can open: {e}")))?;
+    let proj = Project::from_json(&text).map_err(|e| EngineError::Other(format!("{path} is not a project Aurora can open: {e}")))?;
     s.replace_project(proj, Some(path.to_string()));
     s.note_project_path(path);
-    // Written by a newer EffectCraft: what this version doesn't know would be lost on saving.
-    let saved_by = effectcraft_project::saved_by(&text);
-    if let Some(v) = saved_by.as_deref().filter(|v| effectcraft_project::is_newer_version(v, effectcraft_project::APP_VERSION)) {
+    // Written by a newer Aurora: what this version doesn't know would be lost on saving.
+    let saved_by = aurora_project::saved_by(&text);
+    if let Some(v) = saved_by.as_deref().filter(|v| aurora_project::is_newer_version(v, aurora_project::APP_VERSION)) {
         s.toast(format!(
-            "This project was saved by EffectCraft {v}, newer than this version ({}). Settings this version doesn't know are lost if you save it.",
-            effectcraft_project::APP_VERSION
+            "This project was saved by Aurora {v}, newer than this version ({}). Settings this version doesn't know are lost if you save it.",
+            aurora_project::APP_VERSION
         ));
     }
     // Lazy open: footage is checked in the background (Progress panel), not before the
@@ -185,8 +185,8 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
         let mut rest = vec![];
         for path in paths {
             let bytes = match s.services.read_file(&path) {
-                Ok(b) if effectcraft_psd::is_psd(&b) => b,
-                Ok(b) if effectcraft_pdf::sniff(&b).is_some() && !path.to_ascii_lowercase().ends_with(".svg") => {
+                Ok(b) if aurora_psd::is_psd(&b) => b,
+                Ok(b) if aurora_pdf::sniff(&b).is_some() && !path.to_ascii_lowercase().ends_with(".svg") => {
                     // PDF / Illustrator / EPS: one layer per file layer.
                     match import_vector_comp(s, &path, &b, page) {
                         Ok((comp, items)) => {
@@ -214,14 +214,14 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
         paths = rest;
         if paths.is_empty() {
             if let Some(c) = out_comps.first() {
-                s.open_comp(effectcraft_project::ItemId(*c));
+                s.open_comp(aurora_project::ItemId(*c));
             }
             return Ok(json!({"items": ids, "comps": out_comps, "errors": errors}));
         }
     }
     let mut probed = vec![];
     let psd_layer = p.get("layer").cloned();
-    let seq_rate = effectcraft_time::FrameRate::from_f64(s.prefs.import.sequence_fps);
+    let seq_rate = aurora_time::FrameRate::from_f64(s.prefs.import.sequence_fps);
     let mut ask_alpha = vec![];
     let mut warnings = vec![];
     for path in &paths {
@@ -247,7 +247,7 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
                     warnings.push(format!("{path}: {gaps}"));
                 }
                 // Settings ▸ Import ▸ Interpret Unlabeled Alpha As.
-                if f.alpha != effectcraft_project::AlphaMode::Ignore && !alpha_is_labeled(path, &f.codec) {
+                if f.alpha != aurora_project::AlphaMode::Ignore && !alpha_is_labeled(path, &f.codec) {
                     match s.prefs.unlabeled_alpha(f.kind == FootageKind::Video) {
                         Some(a) => f.alpha = a,
                         None => ask_alpha.push(paths.iter().position(|x| x == path).unwrap_or(0)),
@@ -266,7 +266,7 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
                         .services
                         .read_file(path)
                         .map_err(|e| e.to_string())
-                        .and_then(|b| effectcraft_pdf::parse_page(&b, page as usize).map_err(|e| e.to_string()))
+                        .and_then(|b| aurora_pdf::parse_page(&b, page as usize).map_err(|e| e.to_string()))
                     {
                         Ok(doc) => {
                             (f.width, f.height) = doc.pixel_size();
@@ -282,9 +282,9 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
                 if let Some(sel) = &psd_layer
                     && f.codec == "PSD"
                 {
-                    match s.services.read_file(path).ok().and_then(|b| effectcraft_psd::Psd::parse(b).ok()).and_then(|d| find_psd_layer(&d, sel)) {
+                    match s.services.read_file(path).ok().and_then(|b| aurora_psd::Psd::parse(b).ok()).and_then(|d| find_psd_layer(&d, sel)) {
                         Some((index, name)) => {
-                            f.layer = Some(effectcraft_project::SourceLayer { index: index as u32, name, layer_size: false, embedded: None, placed: false })
+                            f.layer = Some(aurora_project::SourceLayer { index: index as u32, name, layer_size: false, embedded: None, placed: false })
                         }
                         None => {
                             errors.push(format!("{path}: no layer {sel}"));
@@ -323,7 +323,7 @@ pub(crate) fn import(s: &mut Session, p: &Value) -> Result<Value> {
         Ok(())
     })?;
     if let Some(c) = out_comps.first() {
-        s.open_comp(effectcraft_project::ItemId(*c));
+        s.open_comp(aurora_project::ItemId(*c));
     }
     for w in &warnings {
         s.events.push(crate::Event::Toast { message: w.clone(), error: true });
@@ -366,7 +366,7 @@ pub(crate) fn missing_frames(files: &[String]) -> Option<String> {
 }
 
 /// A Photoshop layer by index or name (pixel layers only).
-fn find_psd_layer(d: &effectcraft_psd::Psd, sel: &Value) -> Option<(usize, String)> {
+fn find_psd_layer(d: &aurora_psd::Psd, sel: &Value) -> Option<(usize, String)> {
     let l = match sel {
         Value::Number(n) => d.layers.get(n.as_u64()? as usize)?,
         Value::String(name) => d.layers.iter().find(|l| &l.name == name)?,
@@ -377,11 +377,11 @@ fn find_psd_layer(d: &effectcraft_psd::Psd, sel: &Value) -> Option<(usize, Strin
 
 /// Import a Photoshop document as a composition (one undo step). Returns (comp, items, warnings).
 pub(crate) fn import_psd_comp(s: &mut Session, path: &str, bytes: Vec<u8>, retain: bool) -> Result<(u64, Vec<u64>, Vec<String>)> {
-    let psd = effectcraft_psd::Psd::parse(bytes).map_err(|e| EngineError::Other(e.to_string()))?;
+    let psd = aurora_psd::Psd::parse(bytes).map_err(|e| EngineError::Other(e.to_string()))?;
     let name = std::path::Path::new(path).file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "Photoshop".into());
-    let rate = effectcraft_time::FrameRate::FPS_29_97;
+    let rate = aurora_time::FrameRate::FPS_29_97;
     let secs = if s.prefs.import.still_footage == "seconds" { s.prefs.import.still_seconds } else { 10.0 };
-    let duration = rate.snap_nearest(effectcraft_time::Tick::from_seconds_f64(secs));
+    let duration = rate.snap_nearest(aurora_time::Tick::from_seconds_f64(secs));
     let r = s.edit("Import", None, |proj, st| {
         let r = crate::psd_import::import(proj, &psd, path, &name, retain, rate, duration);
         st.project_selection = vec![r.comp];
@@ -399,9 +399,9 @@ fn import_vector_comp(s: &mut Session, path: &str, bytes: &[u8], page: u32) -> R
     if page > 0 {
         name = format!("{name} (Page {})", page + 1);
     }
-    let rate = effectcraft_time::FrameRate::FPS_29_97;
+    let rate = aurora_time::FrameRate::FPS_29_97;
     let secs = if s.prefs.import.still_footage == "seconds" { s.prefs.import.still_seconds } else { 10.0 };
-    let duration = rate.snap_nearest(effectcraft_time::Tick::from_seconds_f64(secs));
+    let duration = rate.snap_nearest(aurora_time::Tick::from_seconds_f64(secs));
     let (comp, folder, items) = s.edit("Import", None, |proj, st| {
         let r = crate::vector::import_vector_comp(proj, path, bytes, &name, page, rate, duration).map_err(EngineError::Other)?;
         st.project_selection = vec![r.0];
@@ -416,7 +416,7 @@ fn import_vector_comp(s: &mut Session, path: &str, bytes: &[u8], page: u32) -> R
 pub const DATA_EXTENSIONS: &[&str] = &["json", "csv", "tsv"];
 
 /// A data footage item for `path` (JSON / CSV / TSV), `None` for other files.
-pub(crate) fn data_footage(s: &Session, path: &str) -> Option<std::result::Result<effectcraft_project::Footage, String>> {
+pub(crate) fn data_footage(s: &Session, path: &str) -> Option<std::result::Result<aurora_project::Footage, String>> {
     let ext = std::path::Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
     if !DATA_EXTENSIONS.contains(&ext.as_str()) {
         return None;
@@ -427,7 +427,7 @@ pub(crate) fn data_footage(s: &Session, path: &str) -> Option<std::result::Resul
         if ext == "json" {
             serde_json::from_str::<Value>(text.trim_start_matches('\u{feff}')).map_err(|e| format!("invalid JSON: {e}"))?;
         }
-        Ok(effectcraft_project::Footage { path: path.to_string(), kind: FootageKind::Data, codec: ext.to_uppercase(), data: Some(text), ..Default::default() })
+        Ok(aurora_project::Footage { path: path.to_string(), kind: FootageKind::Data, codec: ext.to_uppercase(), data: Some(text), ..Default::default() })
     })())
 }
 
@@ -435,16 +435,16 @@ fn project_settings(s: &mut Session, p: &Value) -> Result<Value> {
     s.edit("Project Settings", None, |proj, _| {
         if let Some(b) = str_p(p, "bitDepth") {
             proj.settings.bit_depth = match b {
-                "8" | "8bpc" | "8 bpc" => effectcraft_project::BitDepth::Bpc8,
-                "16" | "16bpc" | "16 bpc" => effectcraft_project::BitDepth::Bpc16,
-                "32" | "32bpc" | "32 bpc" => effectcraft_project::BitDepth::Bpc32,
+                "8" | "8bpc" | "8 bpc" => aurora_project::BitDepth::Bpc8,
+                "16" | "16bpc" | "16 bpc" => aurora_project::BitDepth::Bpc16,
+                "32" | "32bpc" | "32 bpc" => aurora_project::BitDepth::Bpc32,
                 _ => return Err(bad("file.projectSettings", "bitDepth must be 8, 16 or 32")),
             };
         } else if let Some(n) = p.get("bitDepth").and_then(Value::as_u64) {
             proj.settings.bit_depth = match n {
-                16 => effectcraft_project::BitDepth::Bpc16,
-                32 => effectcraft_project::BitDepth::Bpc32,
-                _ => effectcraft_project::BitDepth::Bpc8,
+                16 => aurora_project::BitDepth::Bpc16,
+                32 => aurora_project::BitDepth::Bpc32,
+                _ => aurora_project::BitDepth::Bpc8,
             };
         }
         if let Some(l) = p.get("linearize").and_then(Value::as_bool) {
@@ -453,7 +453,7 @@ fn project_settings(s: &mut Session, p: &Value) -> Result<Value> {
         if let Some(l) = p.get("blendLinear").or_else(|| p.get("blendColorsUsing1Gamma")).and_then(Value::as_bool) {
             proj.settings.blend_linear = l;
         }
-        use effectcraft_project::{ColorEngine, ColorSpace, HdrMode};
+        use aurora_project::{ColorEngine, ColorSpace, HdrMode};
         let cmd = "file.projectSettings";
         if let Some(e) = str_p(p, "colorEngine") {
             let engine = match e.to_ascii_lowercase().replace([' ', '-', '_'], "").as_str() {
@@ -502,8 +502,8 @@ fn project_settings(s: &mut Session, p: &Value) -> Result<Value> {
         if let Some(r) = p.get("renderer").or_else(|| p.get("gpuAcceleration")) {
             proj.settings.gpu_acceleration = match r {
                 Value::Bool(b) => *b,
-                Value::String(s) => match effectcraft_render::Backend::parse(s) {
-                    Some(effectcraft_render::Backend::Cpu) => false,
+                Value::String(s) => match aurora_render::Backend::parse(s) {
+                    Some(aurora_render::Backend::Cpu) => false,
                     Some(_) => true,
                     None => return Err(bad("file.projectSettings", format!("renderer: gpu|software, not `{s}`"))),
                 },
@@ -511,7 +511,7 @@ fn project_settings(s: &mut Session, p: &Value) -> Result<Value> {
             };
         }
         if let Some(t) = str_p(p, "timeDisplay") {
-            proj.settings.time_display = effectcraft_project::TimeDisplayStyle::parse(t)
+            proj.settings.time_display = aurora_project::TimeDisplayStyle::parse(t)
                 .ok_or_else(|| bad("file.projectSettings", format!("timeDisplay: timecode|frames|feet35|feet16, not `{t}`")))?;
         }
         Ok(())
@@ -525,8 +525,8 @@ fn render_backend(s: &mut Session, p: &Value) -> Result<Value> {
     if let Some(b) = p.get("backend").or_else(|| p.get("renderer")) {
         let gpu = match b {
             Value::Bool(b) => *b,
-            Value::String(v) => match effectcraft_render::Backend::parse(v) {
-                Some(effectcraft_render::Backend::Cpu) => false,
+            Value::String(v) => match aurora_render::Backend::parse(v) {
+                Some(aurora_render::Backend::Cpu) => false,
                 Some(_) => true,
                 None => return Err(bad("render.backend", format!("backend: gpu|cpu, not `{v}`"))),
             },

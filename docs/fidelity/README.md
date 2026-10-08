@@ -12,7 +12,7 @@ overall animation, rendering, spatial-path or application-parity score.
 ## Reproduce
 
 With Node.js, Rust and an installed AEsync CLI, open a scratch After Effects project and run from
-the EffectCraft checkout:
+the Aurora checkout:
 
 ```sh
 node examples/check-ae-ease.mjs /path/to/aesync/server/dist/cli.js
@@ -23,19 +23,19 @@ The script creates a temporary comp with an original text layer, samples its Rot
 removes the comp on success or failure. It does not save, close or replace the current project.
 Run in a scratch project: creating/removing the comp still changes the dirty flag and undo history.
 
-`crates/keyframe/examples/ae_ease_samples.rs` evaluates the corresponding EffectCraft keys.
+`crates/keyframe/examples/ae_ease_samples.rs` evaluates the corresponding Aurora keys.
 `examples/ae-ease-oracle.jsx` records live property samples and actual ease settings after the setters.
 `examples/check-ae-ease.mjs` checks case metadata, applied AE settings, finite values and sample times,
 then compares every value with an absolute tolerance of `1e-7` degrees. A failing score exits nonzero.
 
-Raw host observations and EffectCraft samples stay in gitignored `plan/aftereffects/ref/ease/`.
+Raw host observations and Aurora samples stay in gitignored `plan/aftereffects/ref/ease/`.
 Only the original harness and aggregate scores in `keyframe-ease.json` are tracked. No Adobe artwork,
 presets, screenshots, frames or implementation code are included.
 
 ## Finding and validation
 
 Measured on 5 October 2026 with After Effects `26.3x87` and AEsync 2.0.4. Before the fix,
-EffectCraft normalized outgoing/incoming influence when their sum exceeded 100%. AE retains each
+Aurora normalized outgoing/incoming influence when their sum exceeded 100%. AE retains each
 influence. That normalization caused maximum errors of 12.4581 degrees for 80%/80%, 8.8909 degrees
 for the asymmetric case and 5.5636 degrees for the descending case. Removing normalization in both
 scalar evaluation and the shared progress helper makes all eight cases pass; the largest difference

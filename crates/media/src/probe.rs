@@ -1,10 +1,10 @@
-//! Probing: describe a file as an [`effectcraft_project::Footage`].
+//! Probing: describe a file as an [`aurora_project::Footage`].
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use effectcraft_project::{AlphaMode, Footage, FootageKind};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_project::{AlphaMode, Footage, FootageKind};
+use aurora_time::{FrameRate, Tick};
 
 use crate::{MediaError, Result, STILL_EXTENSIONS, ext_of, rate_from_fc};
 
@@ -38,10 +38,10 @@ pub fn probe_single(path: impl AsRef<Path>) -> Result<Footage> {
 /// Probe a 3D model (glTF 2.0 / OBJ): a [`FootageKind::Model`] item whose duration is its
 /// longest animation. `resolve` reads sibling resources.
 pub fn probe_model(path: &str, bytes: &[u8], resolve: &dyn Fn(&str) -> Option<Vec<u8>>) -> Result<Footage> {
-    let m = effectcraft_model::load(path, bytes, resolve).map_err(|e| MediaError::Decode(format!("{path}: {e}")))?;
+    let m = aurora_model::load(path, bytes, resolve).map_err(|e| MediaError::Decode(format!("{path}: {e}")))?;
     let s = m.summary();
     let dur = s.animations.iter().map(|a| a.1).fold(0.0f64, f64::max);
-    let codec = match effectcraft_model::format_of(path) {
+    let codec = match aurora_model::format_of(path) {
         Some("obj") => "OBJ",
         Some("glb") => "GLB",
         _ => "glTF",
@@ -121,8 +121,8 @@ pub(crate) fn footage_from_info(path: &str, info: &filmcraft_media::MediaInfo) -
 
 /// The colour profile a video stream declares (H.273 primaries / transfer from the bitstream or
 /// container). `None` (interpreted as sRGB) for Rec. 709 primaries with an sRGB curve.
-fn profile_of(c: &filmcraft_color::ColorInfo) -> Option<effectcraft_project::ColorSpace> {
-    use effectcraft_project::ColorSpace;
+fn profile_of(c: &filmcraft_color::ColorInfo) -> Option<aurora_project::ColorSpace> {
+    use aurora_project::ColorSpace;
     use filmcraft_color::{Primaries, Transfer};
     match (c.primaries, c.transfer) {
         (Primaries::Bt2020, _) => Some(ColorSpace::Rec2020),

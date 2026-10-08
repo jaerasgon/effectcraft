@@ -3,12 +3,12 @@
 //! Clicking the message selects the layer and reveals the property in the timeline.
 //! Automation ids: `viewer.exprErrors`, `viewer.exprErrors.prev`, `viewer.exprErrors.next`.
 
-use effectcraft_engine::commands::expr_tools::{self, ExprError};
-use effectcraft_engine::project::ItemId;
+use aurora_engine::commands::expr_tools::{self, ExprError};
+use aurora_engine::project::ItemId;
 use egui::{Align2, Color32, Rect, Sense, pos2, vec2};
 use serde_json::json;
 
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::theme::Tokens;
 
 /// Height of the bar.
@@ -28,7 +28,7 @@ fn cache_id() -> egui::Id {
 
 /// The comp's failing expressions (recomputed when the project or the time changes; kept while
 /// playing).
-fn errors(app: &EffectcraftApp, ctx: &egui::Context, cid: ItemId) -> Cache {
+fn errors(app: &AuroraApp, ctx: &egui::Context, cid: ItemId) -> Cache {
     let t = app.session.time_of(cid);
     let key = (app.session.revision, cid.0, t.0);
     let mut c: Cache = ctx.data(|d| d.get_temp(cache_id())).unwrap_or_default();
@@ -43,11 +43,11 @@ fn errors(app: &EffectcraftApp, ctx: &egui::Context, cid: ItemId) -> Cache {
 }
 
 /// Height the bar needs for `cid` (0 when every expression evaluates).
-pub fn height(app: &EffectcraftApp, ctx: &egui::Context, cid: ItemId) -> f32 {
+pub fn height(app: &AuroraApp, ctx: &egui::Context, cid: ItemId) -> f32 {
     if app.session.expr.is_none() || errors(app, ctx, cid).errors.is_empty() { 0.0 } else { HEIGHT }
 }
 
-pub fn draw(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect, cid: ItemId) {
+pub fn draw(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect, cid: ItemId) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let mut c = errors(app, &ctx, cid);

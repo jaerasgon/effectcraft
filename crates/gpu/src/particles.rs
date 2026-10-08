@@ -1,11 +1,11 @@
-//! GPU particles (`particles.wgsl`): the stepped particle systems of `effectcraft-effects`
-//! ([`effectcraft_effects::psim`]) simulated with one invocation per particle. States stay on
+//! GPU particles (`particles.wgsl`): the stepped particle systems of `aurora-effects`
+//! ([`aurora_effects::psim`]) simulated with one invocation per particle. States stay on
 //! the GPU as checkpoints (per system key, like the CPU's `SimCache`), so playback advances from
 //! the previous frame's state instead of simulating from layer time 0.
 
 use std::sync::{Mutex, OnceLock};
 
-use effectcraft_effects::psim::{ParticleSystem, SimParticle, SimRequest};
+use aurora_effects::psim::{ParticleSystem, SimParticle, SimRequest};
 use wgpu::util::DeviceExt;
 
 use crate::context::GpuContext;
@@ -38,8 +38,7 @@ fn pipes(g: &GpuContext) -> &Pipes {
     g.particles.get_or_init(|| {
         let d = &g.device;
         let src = [include_str!("shaders/common.wgsl"), include_str!("shaders/kernels.wgsl"), include_str!("shaders/particles.wgsl")].concat();
-        let module =
-            d.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("effectcraft particles"), source: wgpu::ShaderSource::Wgsl(src.into()) });
+        let module = d.create_shader_module(wgpu::ShaderModuleDescriptor { label: Some("aurora particles"), source: wgpu::ShaderSource::Wgsl(src.into()) });
         let buffer = |binding: u32, ty: wgpu::BufferBindingType| wgpu::BindGroupLayoutEntry {
             binding,
             visibility: wgpu::ShaderStages::COMPUTE,
@@ -47,7 +46,7 @@ fn pipes(g: &GpuContext) -> &Pipes {
             count: None,
         };
         let bgl = d.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-            label: Some("effectcraft particles"),
+            label: Some("aurora particles"),
             entries: &[
                 buffer(0, wgpu::BufferBindingType::Uniform),
                 buffer(1, wgpu::BufferBindingType::Storage { read_only: true }),
@@ -56,7 +55,7 @@ fn pipes(g: &GpuContext) -> &Pipes {
             ],
         });
         let layout = d.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
-            label: Some("effectcraft particles"),
+            label: Some("aurora particles"),
             bind_group_layouts: &[None, Some(&bgl)],
             immediate_size: 0,
         });
@@ -74,7 +73,7 @@ fn pipes(g: &GpuContext) -> &Pipes {
 
 /// The shader's parameter block.
 fn uniforms(req: &SimRequest, n: u32, s0: u64, prev_n: u32) -> Vec<u8> {
-    let dt = (1.0 / effectcraft_effects::psim::SPS) as f32;
+    let dt = (1.0 / aurora_effects::psim::SPS) as f32;
     let mut u = [n, s0 as u32, req.steps as u32, 0];
     let u2;
     let mut f = [[0.0f32; 4]; 6];
@@ -107,7 +106,7 @@ fn uniforms(req: &SimRequest, n: u32, s0: u64, prev_n: u32) -> Vec<u8> {
     out
 }
 
-/// Simulate `req` (see [`effectcraft_effects::psim::ParticleSim`]).
+/// Simulate `req` (see [`aurora_effects::psim::ParticleSim`]).
 ///
 /// With deferred readbacks (a browser worker) the state's readback is keyed by the request
 /// ([`crate::deferred`]): the first pass starts it and gets no particles (the pass misses and is

@@ -20,8 +20,8 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
-use effectcraft_effects::Buf;
-use effectcraft_project::{ItemKind, Layer, LayerSource, Node, PropGroup};
+use aurora_effects::Buf;
+use aurora_project::{ItemKind, Layer, LayerSource, Node, PropGroup};
 
 use crate::eval::EvalCtx;
 
@@ -186,7 +186,7 @@ impl LayerCache {
     }
 
     fn insert_mem(&self, key: u64, buf: Arc<Buf>) {
-        let bytes = buf.img.data.len() * std::mem::size_of::<effectcraft_raster::Px>();
+        let bytes = buf.img.data.len() * std::mem::size_of::<aurora_raster::Px>();
         let Ok(mut g) = self.inner.lock() else { return };
         if bytes > g.budget / 4 {
             return;
@@ -314,19 +314,19 @@ impl PrefetchStore {
     /// when damaged.
     pub fn provide(&self, key: u128, entry: &[u8]) -> bool {
         let Some(buf) = crate::disk_cache::read_layer_entry(entry) else { return false };
-        let bytes = buf.img.data.len() * std::mem::size_of::<effectcraft_raster::Px>();
+        let bytes = buf.img.data.len() * std::mem::size_of::<aurora_raster::Px>();
         let Ok(mut s) = self.st.lock() else { return false };
         s.clock += 1;
         let now = s.clock;
         if let Some((old, _)) = s.ready.insert(key, (Arc::new(buf), now)) {
-            s.bytes -= old.img.data.len() * std::mem::size_of::<effectcraft_raster::Px>();
+            s.bytes -= old.img.data.len() * std::mem::size_of::<aurora_raster::Px>();
         }
         s.bytes += bytes;
         s.known.insert(key);
         while s.bytes > self.budget {
             let Some((&k, _)) = s.ready.iter().min_by_key(|(_, (_, t))| *t) else { break };
             if let Some((b, _)) = s.ready.remove(&k) {
-                s.bytes -= b.img.data.len() * std::mem::size_of::<effectcraft_raster::Px>();
+                s.bytes -= b.img.data.len() * std::mem::size_of::<aurora_raster::Px>();
             }
         }
         true
@@ -425,14 +425,14 @@ fn time_dependent(layer: &Layer) -> bool {
         && let Some(fx) = layer.effects()
     {
         for g in fx.groups() {
-            if let effectcraft_project::GroupKind::Effect { effect } = &g.kind
+            if let aurora_project::GroupKind::Effect { effect } = &g.kind
                 && g.enabled
-                && effectcraft_effects::is_time_dependent(effect)
+                && aurora_effects::is_time_dependent(effect)
             {
                 return true;
             }
             // Clone strokes reading another layer or another time.
-            if g.enabled && effectcraft_effects::paint::is_paint(g) && effectcraft_effects::paint::cache_key(g, 0.0).1 {
+            if g.enabled && aurora_effects::paint::is_paint(g) && aurora_effects::paint::cache_key(g, 0.0).1 {
                 return true;
             }
         }
@@ -505,7 +505,7 @@ pub fn input_key(ctx: &EvalCtx, layer: &Layer, scale: f64, draft: bool, blur: bo
 fn reads_other_times(layer: &Layer) -> bool {
     layer.switches.effects
         && layer.effects().is_some_and(|fx| {
-            fx.groups().any(|g| g.enabled && matches!(&g.kind, effectcraft_project::GroupKind::Effect { effect } if effect.starts_with("ec.time.")))
+            fx.groups().any(|g| g.enabled && matches!(&g.kind, aurora_project::GroupKind::Effect { effect } if effect.starts_with("ec.time.")))
         })
 }
 
@@ -577,7 +577,7 @@ fn key_any(ctx: &EvalCtx, layer: &Layer, scale: f64, draft: bool, blur: bool, fo
     for c in &layer.props.children {
         // Transform is applied later; Layer Styles are keyed separately (see [`styles_key`]).
         if let Node::Group(g) = c
-            && (g.match_id == "transform" || g.match_id == effectcraft_project::styles::GROUP)
+            && (g.match_id == "transform" || g.match_id == aurora_project::styles::GROUP)
         {
             continue;
         }
@@ -610,8 +610,8 @@ fn key_any(ctx: &EvalCtx, layer: &Layer, scale: f64, draft: bool, blur: bool, fo
         && let Some(fx) = layer.effects()
     {
         let lt = layer.layer_time(ctx.time).seconds();
-        for g in fx.groups().filter(|g| g.enabled && effectcraft_effects::paint::is_paint(g)) {
-            effectcraft_effects::paint::cache_key(g, lt).0.hash(&mut h);
+        for g in fx.groups().filter(|g| g.enabled && aurora_effects::paint::is_paint(g)) {
+            aurora_effects::paint::cache_key(g, lt).0.hash(&mut h);
         }
     }
     if time_dependent(layer) {

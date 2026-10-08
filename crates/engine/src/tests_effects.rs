@@ -1,8 +1,8 @@
 //! Effect Controls operations: copy/paste, duplicate, reorder, remove (Delete), reset, and the
 //! Edit menu routing to them when effects are selected, all with undo.
 
-use effectcraft_keyframe::Value as KV;
-use effectcraft_project::{Layer, LayerId};
+use aurora_keyframe::Value as KV;
+use aurora_project::{Layer, LayerId};
 use serde_json::json;
 
 use crate::Session;
@@ -144,21 +144,21 @@ fn layer_params_get_a_source_companion() {
     let (mut s, a, _) = comp_with_two_solids();
     apply(&mut s, a, "ec.channel.blend");
     let g = layer(&s, a).effects().unwrap().groups().next().unwrap().clone();
-    let layer_params: Vec<_> = g.props().filter(|p| matches!(p.ui, effectcraft_project::ParamUi::Layer)).map(|p| p.match_id.clone()).collect();
+    let layer_params: Vec<_> = g.props().filter(|p| matches!(p.ui, aurora_project::ParamUi::Layer)).map(|p| p.match_id.clone()).collect();
     assert!(!layer_params.is_empty());
     for id in layer_params {
-        let src = g.get(&effectcraft_effects::layer_source_id(&id)).expect("companion");
+        let src = g.get(&aurora_effects::layer_source_id(&id)).expect("companion");
         assert_eq!(src.value, KV::Enum(2), "Effects & Masks by default");
-        assert!(matches!(src.ui, effectcraft_project::ParamUi::Hidden));
+        assert!(matches!(src.ui, aurora_project::ParamUi::Hidden));
     }
 }
 
 /// Projects saved before parameters were renamed, regrouped, added or had their popups
-/// reordered open with their instances brought up to date (`effectcraft_effects::migrate`).
+/// reordered open with their instances brought up to date (`aurora_effects::migrate`).
 #[test]
 fn opening_an_old_project_upgrades_effect_instances() {
-    use effectcraft_effects::migrate::PARAM_ID_ALIASES;
-    use effectcraft_project::{Node, ParamUi, PropGroup};
+    use aurora_effects::migrate::PARAM_ID_ALIASES;
+    use aurora_project::{Node, ParamUi, PropGroup};
     let (mut s, a, _) = comp_with_two_solids();
     apply(&mut s, a, "ec.blur.gaussian");
     // One instance of every effect with renamed parameter ids.
@@ -168,7 +168,7 @@ fn opening_an_old_project_upgrades_effect_instances() {
         apply(&mut s, a, e);
     }
     // Rewrite the saved instances the way an older version wrote them.
-    fn take(g: &mut PropGroup, path: &str) -> Option<effectcraft_project::Property> {
+    fn take(g: &mut PropGroup, path: &str) -> Option<aurora_project::Property> {
         match path.split_once('/') {
             None => {
                 let i = g.children.iter().position(|c| matches!(c, Node::Prop(p) if p.match_id == path))?;
@@ -184,7 +184,7 @@ fn opening_an_old_project_upgrades_effect_instances() {
     let cid = s.active_comp_id().unwrap();
     {
         let comp = std::sync::Arc::make_mut(match &mut old.items.get_mut(&cid).unwrap().kind {
-            effectcraft_project::ItemKind::Comp(c) => c,
+            aurora_project::ItemKind::Comp(c) => c,
             _ => panic!("not a composition"),
         });
         let l = comp.layers.iter_mut().find(|l| l.id == LayerId(a)).unwrap();
@@ -227,7 +227,7 @@ fn opening_an_old_project_upgrades_effect_instances() {
     let _ = std::fs::remove_dir_all(dir);
     let l = s2.project.comp(cid).unwrap().layer(LayerId(a)).unwrap().clone();
     let fx = l.effects().unwrap();
-    let spec = effectcraft_effects::find("ec.blur.gaussian").unwrap();
+    let spec = aurora_effects::find("ec.blur.gaussian").unwrap();
     let sp = |id: &str| spec.params.iter().find(|p| p.id == id).unwrap();
     let blur = fx.groups().find(|g| g.match_id == "ec.blur.gaussian").unwrap();
     assert_eq!(blur.get("blurriness").unwrap().name, sp("blurriness").name);

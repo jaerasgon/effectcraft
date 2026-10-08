@@ -2,30 +2,30 @@
 //! registers its automation ids; the Footage panel's buttons edit into the comp; the Progress
 //! panel lists and cancels a job; Lumetri Scopes switch scope through their dropdown.
 
-use effectcraft_engine::Session;
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::dock::PanelKind;
+use aurora_engine::Session;
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::dock::PanelKind;
 use egui::{Event, Pos2, pos2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-fn harness() -> Harness<'static, EffectcraftApp> {
+fn harness() -> Harness<'static, AuroraApp> {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Panels", "width": 320, "height": 180, "duration": 4})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Plate", "color": "#406080"})).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| AuroraApp::new(s));
     h.run_steps(3);
     h
 }
 
-fn open(h: &mut Harness<'_, EffectcraftApp>, panel: &str) {
+fn open(h: &mut Harness<'_, AuroraApp>, panel: &str) {
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.panel", json!({"panel": panel})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.panel", json!({"panel": panel})).unwrap();
     h.run_steps(3);
 }
 
-fn click(h: &mut Harness<'_, EffectcraftApp>, id: &str) {
+fn click(h: &mut Harness<'_, AuroraApp>, id: &str) {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}")).clone();
     let p: Pos2 = pos2(e.rect[0] + e.rect[2] / 2.0, e.rect[1] + e.rect[3] / 2.0);
     h.input_mut().events.push(Event::PointerMoved(p));
@@ -70,7 +70,7 @@ fn scopes_switch_kind() {
 #[test]
 fn footage_panel_buttons_edit_into_the_comp() {
     let mut h = harness();
-    let item = h.state().session.project.items.values().find(|i| matches!(i.kind, effectcraft_engine::project::ItemKind::Solid(_))).unwrap().id.0;
+    let item = h.state().session.project.items.values().find(|i| matches!(i.kind, aurora_engine::project::ItemKind::Solid(_))).unwrap().id.0;
     h.state_mut().session.execute("footage.open", json!({"item": item})).unwrap();
     h.run_steps(4);
     assert!(h.state().ui.dock.contains(PanelKind::Footage) || h.state().ui.floating.iter().any(|f| f.panels.contains(&PanelKind::Footage)));
@@ -104,7 +104,7 @@ fn progress_panel_cancels_a_job() {
     assert_eq!(h.state().session.job_log.last().unwrap().status, "cancelled");
 }
 
-fn click_at(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
+fn click_at(h: &mut Harness<'_, AuroraApp>, p: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(p));
     h.input_mut().events.push(Event::PointerButton { pos: p, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() });
     h.step();
@@ -112,7 +112,7 @@ fn click_at(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
     h.run_steps(2);
 }
 
-fn hover(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
+fn hover(h: &mut Harness<'_, AuroraApp>, p: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(p));
     h.run_steps(3);
 }
@@ -124,17 +124,17 @@ fn hover(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
 fn saved_workspace_is_listed_in_the_workspace_menu() {
     let mut h = harness();
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "Minimal"})).unwrap();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.saveWorkspaceAs", json!({"name": "My Layout"})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "Minimal"})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.saveWorkspaceAs", json!({"name": "My Layout"})).unwrap();
     h.run_steps(3);
     let saved = h.state().ui.dock.clone();
     assert_eq!(h.state().saved_workspace_names(), ["My Layout"]);
-    let cx = effectcraft_engine::menus::DynCtx { workspace: Some("My Layout"), saved_workspaces: &["My Layout".to_string()] };
-    let (entries, _) = effectcraft_engine::menus::dynamic(&h.state().session, "savedWorkspaces", &cx);
+    let cx = aurora_engine::menus::DynCtx { workspace: Some("My Layout"), saved_workspaces: &["My Layout".to_string()] };
+    let (entries, _) = aurora_engine::menus::dynamic(&h.state().session, "savedWorkspaces", &cx);
     assert_eq!(entries.len(), 1);
     assert_eq!((entries[0].label.as_str(), entries[0].command.as_str(), &entries[0].params), ("My Layout", "window.workspace", &json!({"name": "My Layout"})));
     // Leave it, then pick it from the in-window menu bar.
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "Default"})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "Default"})).unwrap();
     h.run_steps(3);
     assert_ne!(h.state().ui.dock, saved);
     click(&mut h, "menu.Window");
@@ -154,18 +154,18 @@ fn saved_workspace_is_listed_in_the_workspace_menu() {
 }
 
 /// Headless look at the panels (wgpu offscreen; needs a GPU adapter). Run with
-/// `PANELS_SNAPSHOT=/abs/dir cargo test -p effectcraft-ui-egui --test ui_panels -- --ignored`.
+/// `PANELS_SNAPSHOT=/abs/dir cargo test -p aurora-ui-egui --test ui_panels -- --ignored`.
 #[test]
 #[ignore]
 fn panels_snapshot() {
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
-    let solid = s.project.items.values().find(|i| matches!(i.kind, effectcraft_engine::project::ItemKind::Solid(_))).map(|i| i.id.0);
-    let mut app = Some(EffectcraftApp::new(s));
+    let solid = s.project.items.values().find(|i| matches!(i.kind, aurora_engine::project::ItemKind::Solid(_))).map(|i| i.id.0);
+    let mut app = Some(AuroraApp::new(s));
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| app.take().expect("app"));
     h.run_steps(3);
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "All Panels"})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "window.workspace", json!({"name": "All Panels"})).unwrap();
     h.run_steps(3);
     let dir = std::env::var("PANELS_SNAPSHOT").unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../../target/test-out").into());
     std::fs::create_dir_all(&dir).unwrap();

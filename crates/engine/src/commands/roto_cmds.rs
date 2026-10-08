@@ -6,11 +6,11 @@
 //! frame and a span of 20 frames each side. Strokes on a frozen effect are refused (Unfreeze
 //! first). Every edit is one undo step.
 
-use effectcraft_effects::roto::{self as fx, FROZEN, Stroke, StrokeKind};
-use effectcraft_keyframe::Value as KV;
-use effectcraft_project::build::Ids;
-use effectcraft_project::{ItemId, Layer, LayerId, PropGroup, Uid};
-use effectcraft_track::roto::{RotoData, iou, rle};
+use aurora_effects::roto::{self as fx, FROZEN, Stroke, StrokeKind};
+use aurora_keyframe::Value as KV;
+use aurora_project::build::Ids;
+use aurora_project::{ItemId, Layer, LayerId, PropGroup, Uid};
+use aurora_track::roto::{RotoData, iou, rle};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, always, b_p, bad, f_p, has_comp, layer_mut, layer_p, str_p};
@@ -200,10 +200,10 @@ fn stroke(s: &mut Session, p: &Value) -> Result<Value> {
         let uid = match existing {
             Some(u) => u,
             None => {
-                let spec = effectcraft_effects::find(fx::ID).ok_or_else(|| EngineError::Other("Roto Brush effect missing".into()))?;
+                let spec = aurora_effects::find(fx::ID).ok_or_else(|| EngineError::Other("Roto Brush effect missing".into()))?;
                 let n = fxg.groups().filter(|g| is_roto(g)).count();
                 let name = if n == 0 { spec.name.to_string() } else { format!("{} {}", spec.name, n + 1) };
-                let g = effectcraft_effects::instantiate(spec, &mut Ids(&mut next), &name, size);
+                let g = aurora_effects::instantiate(spec, &mut Ids(&mut next), &name, size);
                 let u = g.uid;
                 fxg.children.push(g.into());
                 u

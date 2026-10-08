@@ -4,13 +4,13 @@
 
 use std::sync::Mutex;
 
-use effectcraft_project::render_queue::{
+use aurora_project::render_queue::{
     AlphaMode, Channels, ColorDepth, CurrentOrOff, EffectsMode, FrameSample, RenderLog, ResizeQuality, SwitchOverride, log_path,
 };
-use effectcraft_project::{Comp, Project};
-use effectcraft_raster::Image;
-use effectcraft_render::{RenderOpts, Renderer};
-use effectcraft_time::Tick;
+use aurora_project::{Comp, Project};
+use aurora_raster::Image;
+use aurora_render::{RenderOpts, Renderer};
+use aurora_time::Tick;
 use web_time::Instant;
 
 use crate::{Job, RenderQuality, out};
@@ -84,7 +84,7 @@ impl<'a> Cx<'a> {
             draft: s.quality == RenderQuality::Draft,
             // Output renders always look through the comp's active camera.
             view: None,
-            backend: effectcraft_render::Backend::Auto,
+            backend: aurora_render::Backend::Auto,
             roi: None,
             nested_switches: self.job.nested_switches,
             draft_shadows: true,
@@ -94,12 +94,12 @@ impl<'a> Cx<'a> {
         r.expr = self.job.expr;
         r.accel = self.job.accel;
         // With deferred GPU readbacks (a browser worker) the frame renders in passes.
-        effectcraft_render::passes::comp_frame(&r, self.job.comp, t).await
+        aurora_render::passes::comp_frame(&r, self.job.comp, t).await
     }
 
     /// Whether frames render in passes (an accelerator with deferred readbacks).
     pub fn deferred(&self) -> bool {
-        effectcraft_render::passes::is_deferred(self.job.accel)
+        aurora_render::passes::is_deferred(self.job.accel)
     }
 
     /// Output frames `ks`, each mapped by `f` (encoding): rendered in parallel batches, or one
@@ -119,7 +119,7 @@ impl<'a> Cx<'a> {
 
     /// Output frame `i`: sampled (fields, pulldown), at the colour depth, cropped and resized.
     pub fn frame(&self, comp: &Comp, i: u64) -> Image {
-        effectcraft_render::passes::block_on(self.frame_async(comp, i))
+        aurora_render::passes::block_on(self.frame_async(comp, i))
     }
 
     /// [`Cx::frame`] as a future (deferred readbacks: the frame renders in passes).
@@ -161,7 +161,7 @@ impl<'a> Cx<'a> {
             return img;
         }
         match om.resize.quality {
-            ResizeQuality::Low => effectcraft_raster::warp::resample(&img, w, h),
+            ResizeQuality::Low => aurora_raster::warp::resample(&img, w, h),
             ResizeQuality::High => bicubic(&img, w, h),
         }
     }
@@ -215,7 +215,7 @@ impl<'a> Cx<'a> {
         let comp = self.comp();
         let path = log_path(self.job.path);
         let mut s = String::new();
-        s.push_str("EffectCraft Render Log\n");
+        s.push_str("Aurora Render Log\n");
         s.push_str(&format!("Item: {}\n", if self.job.options.label.is_empty() { "(render)" } else { &self.job.options.label }));
         s.push_str(&format!("Output: {}\n", self.job.path));
         match result {
@@ -291,7 +291,7 @@ pub(crate) fn crop(img: &Image, t: i32, l: i32, b: i32, r: i32) -> Image {
 fn bicubic(src: &Image, w: u32, h: u32) -> Image {
     // Shrinking a lot: bilinear with its box pre-filter first, then bicubic for the last step.
     if src.width > w * 2 && src.height > h * 2 {
-        let mid = effectcraft_raster::warp::resample(src, w * 2, h * 2);
+        let mid = aurora_raster::warp::resample(src, w * 2, h * 2);
         return bicubic(&mid, w, h);
     }
     let mut out = Image::new(w, h);

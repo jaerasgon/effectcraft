@@ -1,9 +1,9 @@
 //! GPU vs CPU for the blur, transition and generate family (`fx_generate`).
 
-use effectcraft_keyframe::Value;
-use effectcraft_project::BitDepth;
-use effectcraft_render::RenderOpts;
-use effectcraft_time::Tick;
+use aurora_keyframe::Value;
+use aurora_project::BitDepth;
+use aurora_render::RenderOpts;
+use aurora_time::Tick;
 
 use crate::tests::{Scene, c, check, compare_at, effect_case, n, opts, set};
 

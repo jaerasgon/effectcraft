@@ -6,8 +6,8 @@
 //! Values stay gamma-encoded: like After Effects, footage pixels enter the working space as they
 //! are encoded in the file. Alpha follows the footage's [`AlphaMode`] interpretation.
 
-use effectcraft_project::AlphaMode;
-use effectcraft_raster::{Image, Px};
+use aurora_project::AlphaMode;
+use aurora_raster::{Image, Px};
 use filmcraft_color::{Matrix, Range};
 use filmcraft_frame::{Chroma, PixelData, VideoFrame};
 use rayon::prelude::*;
@@ -354,7 +354,7 @@ mod tests {
         assert!((p[0] - 0.5).abs() < 1e-3 && (p[1] - 1.0).abs() < 1e-5 && p[2] > 1.5, "{p:?}");
     }
 
-    /// `cargo test -p effectcraft-media --lib bench -- --ignored --nocapture`
+    /// `cargo test -p aurora-media --lib bench -- --ignored --nocapture`
     #[test]
     #[ignore]
     fn bench_convert_1080p() {

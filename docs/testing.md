@@ -24,14 +24,14 @@ cargo xtask ci             # fmt, clippy -D warnings, tests, layers, assets, was
 - **Export** (`crates/export/tests`): every format is encoded and decoded back, checking frame
   count, size and pixels. When `ffmpeg`/`ffprobe` are installed they are used as an outside
   check; they are never linked or shipped.
-- **Automation** (`crates/automation`, `apps/effectcraft-cli/tests`): MCP protocol round trips and
+- **Automation** (`crates/automation`, `apps/aurora-cli/tests`): MCP protocol round trips and
   the command-line tool's JSON output.
 - **Interface** (`crates/ui-egui`): headless egui_kittest tests for panels and dialogs.
 
 ## Looking at the interface without a window
 
 ```sh
-cargo run -p effectcraft-ui-egui --example snapshot -- --out ui.png \
+cargo run -p aurora-ui-egui --example snapshot -- --out ui.png \
   --step '{"method":"engine.execute","params":{"command":"layer.select","params":{"layers":["#2"]}}}'
 ```
 
@@ -41,7 +41,7 @@ intermediate image.
 ## Benchmarks
 
 ```sh
-cargo run --release -p effectcraft-cli -- bench --n 10 --play 30
+cargo run --release -p aurora-cli -- bench --n 10 --play 30
 ```
 
 prints per-layer and per-effect timings for one frame, and playback timings with and without the

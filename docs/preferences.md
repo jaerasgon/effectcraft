@@ -2,18 +2,18 @@
 
 ## Settings (Preferences)
 
-EffectCraft ▸ Settings (macOS) or Edit ▸ Preferences (Windows/Linux), `Cmd+Alt+;`. The dialog has
+Aurora ▸ Settings (macOS) or Edit ▸ Preferences (Windows/Linux), `Cmd+Alt+;`. The dialog has
 After Effects 2026's pages (General, Startup & Repair, Project, Composition, Previews, Appearance,
 Grids & Guides, Labels, Type, Import, Export, Audio, Disk, Memory & CPU, Video, 3D, Scripting &
 Expressions) with OK, Cancel, Previous and Next. Older page names still open the right page
 (`prefs.open {"page": "Auto-Save"}` opens Project, `Media & Disk Cache` opens Disk, `Memory &
 Performance` opens Memory & CPU).
 
-The model is `effectcraft_engine::prefs::Prefs`: serde, versioned (`version`), addressed by dotted
+The model is `aurora_engine::prefs::Prefs`: serde, versioned (`version`), addressed by dotted
 keys (`general.undoLevels`, `autoSave.intervalMinutes`, `labels.3.name`). It is stored as
 `prefs.json` through the session's `ConfigStore` (the desktop app uses the platform config
-directory: `~/Library/Application Support/EffectCraft` on macOS, `%APPDATA%\EffectCraft` on
-Windows, `$XDG_CONFIG_HOME/effectcraft` on Linux; the web app keeps it in browser storage: the
+directory: `~/Library/Application Support/Aurora` on macOS, `%APPDATA%\Aurora` on
+Windows, `$XDG_CONFIG_HOME/aurora` on Linux; the web app keeps it in browser storage: the
 Origin Private File System, or IndexedDB where OPFS can't write, see [web.md](web.md)). Loading migrates older layouts, keeps unknown keys (from newer versions) and
 falls back to defaults for values that don't parse.
 
@@ -29,7 +29,7 @@ Commands (CLI, MCP, control channel):
 
 ### Settings that change behaviour
 
-- `general.language`: interface language (`system` / `en` / `ja`), Settings ▸ General ▸ Language; menu labels change immediately. `system` (Match System, the default) follows the operating system's interface language where EffectCraft has a translation and is English otherwise; the browser build stays in English with it. Native Japanese UI uses installed system fonts; the web host must supply a Japanese font.
+- `general.language`: interface language (`system` / `en` / `ja`), Settings ▸ General ▸ Language; menu labels change immediately. `system` (Match System, the default) follows the operating system's interface language where Aurora has a translation and is English otherwise; the browser build stays in English with it. Native Japanese UI uses installed system fonts; the web host must supply a Japanese font.
 - `general.undoLevels`: Levels of Undo
 - `general.pathPointSize`: Path Point and Handle Size
 - `general.recentItems`: Recent Projects Shown
@@ -94,7 +94,6 @@ Commands (CLI, MCP, control channel):
 - `appearance.useLabelColorForTabs`: Composition / Timeline tabs show the comp's label colour,
   Effect Controls / Properties the layer's
 - `appearance.cycleMaskColors`: new masks cycle through the mask colours (off: all the first)
-- `appearance.useGradients`: soft gradient on panel tab strips
 - `appearance.inWindowMenuBarMac`: on macOS, draw the menu bar inside the window instead of the
   native menu bar
 - `grids.gridStyle`, `grids.guideStyle`: lines, dashed lines or dots (grid, proportional grid,
@@ -151,11 +150,11 @@ Commands (CLI, MCP, control channel):
 
 ### Display-only settings
 
-These rows are in the dialog for After Effects parity and are stored, but have no EffectCraft
+These rows are in the dialog for After Effects parity and are stored, but have no Aurora
 behaviour to change. `prefs.pages` reports them with `"live": false`; a test keeps this list in
 step with the schema.
 
-- `general.useSystemColorPicker`: EffectCraft has one colour picker on every platform and the
+- `general.useSystemColorPicker`: Aurora has one colour picker on every platform and the
   web; there is no pure-Rust way to open the system colour panels.
 - `composition.hardwareAcceleratePanels`: the Composition, Layer and Footage panels are always
   drawn by the GPU (egui on wgpu).
@@ -169,7 +168,7 @@ which keys are assigned for the held modifiers (purple: application-wide, green:
 both: split), modifier toggles, a searchable list of every command (all engine commands, menu
 entries with bound parameters and the frontend's tool / panel commands), and a preset menu.
 
-- **Presets.** "EffectCraft Default" is After Effects' default layout and is read-only; editing
+- **Presets.** "Aurora Default" is After Effects' default layout and is read-only; editing
   it creates a "Custom" copy. Custom presets store only their differences from the default and
   can be duplicated, renamed, deleted, exported and imported (JSON). The active preset is what
   the menus show and what the shortcut dispatcher runs.
@@ -187,7 +186,7 @@ from?, newName?}`, `shortcuts.export {preset?, path?}`, `shortcuts.import {path?
 ## Auto-save and crash recovery
 
 - Every *n* minutes (Settings ▸ Project ▸ Auto-Save) a project with unsaved changes is written
-  to an `EffectCraft Auto-Save` folder next to it (or the custom folder) as
+  to an `Aurora Auto-Save` folder next to it (or the custom folder) as
   `<name> auto-save N.ecproj`. Slots rotate through 1…maximum versions, overwriting the oldest.
   Untitled projects go to the custom folder, or to `Auto-Save` in the config directory.
 - Every project and auto-save write is atomic: a temporary file is written and flushed, then

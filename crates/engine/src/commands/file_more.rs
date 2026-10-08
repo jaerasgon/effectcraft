@@ -4,9 +4,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use effectcraft_color::Label;
-use effectcraft_project::{AlphaMode, Comp, Footage, FootageKind, ItemId, ItemKind, LayerSource, Project, Solid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_project::{AlphaMode, Comp, Footage, FootageKind, ItemId, ItemKind, LayerSource, Project, Solid};
+use aurora_time::{FrameRate, Tick};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, always, b_p, bad, f_p, has_comp, has_project_selection, str_p};
@@ -125,7 +125,7 @@ fn import_placeholder(s: &mut Session, p: &Value) -> Result<Value> {
 fn solid_from(p: &Value, s: &Session) -> Solid {
     let (cw, ch) = s.active_comp().map(|c| (c.width, c.height)).unwrap_or((1920, 1080));
     let color = match p.get("color") {
-        Some(Value::String(h)) => effectcraft_color::Rgba::from_hex(h).map(|c| [c.r, c.g, c.b]),
+        Some(Value::String(h)) => aurora_color::Rgba::from_hex(h).map(|c| [c.r, c.g, c.b]),
         Some(Value::Array(a)) => Some([0, 1, 2].map(|i| a.get(i).and_then(Value::as_f64).unwrap_or(0.0) as f32)),
         _ => None,
     }
@@ -339,7 +339,7 @@ fn find_missing(s: &mut Session, p: &Value) -> Result<Value> {
             for (cid, c) in s.project.comps() {
                 for l in &c.layers {
                     for g in l.effects().into_iter().flat_map(|fx| fx.groups()) {
-                        if let effectcraft_project::GroupKind::Effect { effect } = &g.kind
+                        if let aurora_project::GroupKind::Effect { effect } = &g.kind
                             && crate::effects::find(effect).is_none()
                         {
                             found.push(json!({"comp": cid.0, "layer": l.id.0, "effect": effect}));
@@ -549,8 +549,8 @@ pub(crate) struct Interpretation {
     invert_alpha: Option<bool>,
     loops: Option<u32>,
     par: Option<f64>,
-    fields: Option<effectcraft_project::FieldOrder>,
-    profile: Option<Option<effectcraft_project::ColorSpace>>,
+    fields: Option<aurora_project::FieldOrder>,
+    profile: Option<Option<aurora_project::ColorSpace>>,
     linear: Option<bool>,
 }
 
@@ -572,7 +572,7 @@ impl Interpretation {
         it.matte = match p.get("matteColor").or(p.get("premulColor")) {
             None => None,
             Some(v) => Some(
-                effectcraft_keyframe::Value::Color([0.0, 0.0, 0.0, 1.0])
+                aurora_keyframe::Value::Color([0.0, 0.0, 0.0, 1.0])
                     .coerce_json(v)
                     .map(|c| {
                         let c = c.as_color();
@@ -585,13 +585,13 @@ impl Interpretation {
         it.loops = p.get("loop").and_then(Value::as_u64).map(|v| v.clamp(1, 9999) as u32);
         it.par = f_p(p, "pixelAspect").filter(|x| *x > 0.0);
         it.fields = match str_p(p, "fields") {
-            Some(f) => Some(effectcraft_project::FieldOrder::parse(f).ok_or_else(|| bad(cmd, "fields: off|upper|lower"))?),
+            Some(f) => Some(aurora_project::FieldOrder::parse(f).ok_or_else(|| bad(cmd, "fields: off|upper|lower"))?),
             None => None,
         };
         // Color ▸ Assign Profile: a colour space id, or "auto"/"none" for the file's own (sRGB).
         it.profile = match str_p(p, "colorProfile") {
             Some("auto" | "none" | "") => Some(None),
-            Some(c) => match effectcraft_project::ColorSpace::parse(c) {
+            Some(c) => match aurora_project::ColorSpace::parse(c) {
                 Some(cs) => Some(Some(cs)),
                 None => return Err(bad(cmd, format!("colorProfile: srgb|rec709|rec2020|p3|auto, not `{c}`"))),
             },

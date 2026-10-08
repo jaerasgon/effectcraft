@@ -4,7 +4,7 @@
 //! [`crate::Hooks::audio_device`], the web app one on Web Audio. During preview playback an
 //! [`AudioPlayback`] runs a feeder thread (wasm32: [`AudioPlayback::pump`] every UI frame) that
 //! mixes the composition ahead of the device with the same mixdown export uses
-//! (`effectcraft_render::audio::mix_comp`: Audio switch, solo, Audio Levels, audio effects) and
+//! (`aurora_render::audio::mix_comp`: Audio switch, solo, Audio Levels, audio effects) and
 //! pushes it into an [`AudioFeed`]; the device callback pulls from the feed.
 //!
 //! **A/V sync:** while audio plays, the audio clock drives playback. The clock is the number of
@@ -23,8 +23,8 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
-use effectcraft_engine::project::ItemId;
-use effectcraft_engine::time::{FrameRate, Tick};
+use aurora_engine::project::ItemId;
+use aurora_engine::time::{FrameRate, Tick};
 
 use crate::frames::RenderSource;
 
@@ -59,7 +59,7 @@ pub struct AudioOutput {
 }
 
 impl AudioOutput {
-    pub fn from_prefs(p: &effectcraft_engine::prefs::Prefs) -> AudioOutput {
+    pub fn from_prefs(p: &aurora_engine::prefs::Prefs) -> AudioOutput {
         AudioOutput { device: p.audio.output_device.clone(), left: p.audio.output_left, right: p.audio.output_right, rate: p.audio.preview_sample_rate }
     }
 }
@@ -298,8 +298,7 @@ fn feed_block(src: &RenderSource, comp: ItemId, feed: &AudioFeed, span: &PlaySpa
 /// `n` stereo frames of `comp`'s mix from comp time `t` at the device `rate`, mixed at `mix` Hz
 /// (resampled when they differ).
 fn mix_block(src: &RenderSource, comp: ItemId, t: Tick, n: usize, rate: u32, mix: u32) -> Vec<f32> {
-    let render =
-        |frames: usize, at: u32| effectcraft_engine::render::audio::mix_comp(&src.project, src.footage.as_ref(), src.expr.as_deref(), comp, t, frames, at);
+    let render = |frames: usize, at: u32| aurora_engine::render::audio::mix_comp(&src.project, src.footage.as_ref(), src.expr.as_deref(), comp, t, frames, at);
     if mix == rate {
         return render(n, rate);
     }

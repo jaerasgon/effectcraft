@@ -1,11 +1,11 @@
 //! Layer Styles pixel tests.
 
-use effectcraft_color::Label;
-use effectcraft_keyframe::{Gradient, Keyframe, Value};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::styles::{self as st, GROUP};
-use effectcraft_project::{Comp, ItemId, ItemKind, Layer, LayerSource, Project, Solid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_keyframe::{Gradient, Keyframe, Value};
+use aurora_project::build::{self, Ids};
+use aurora_project::styles::{self as st, GROUP};
+use aurora_project::{Comp, ItemId, ItemKind, Layer, LayerSource, Project, Solid};
+use aurora_time::{FrameRate, Tick};
 
 use crate::{Image, NoFootage, RenderOpts, Renderer, render_frame};
 

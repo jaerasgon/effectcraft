@@ -2,7 +2,7 @@
 
 - 2026-10-06: Settings ▸ General ▸ Language persists English/Japanese menu labels (`general.language`); native UI reuses installed Japanese font fallback, with no bundled CJK font. Dialog and panel contents remain English.
 
-EffectCraft aims to do what After Effects does, with the same panels, menus and behaviour, written
+Aurora aims to do what After Effects does, with the same panels, menus and behaviour, written
 from scratch in Rust. This is where it stands. The milestones overlap; several are worked on at
 once.
 
@@ -35,10 +35,10 @@ in [docs/gaps.md](docs/gaps.md).
   ([docs/parity.md](docs/parity.md)). This is our own checklist, graded by the agents that built
   the features.
 - **Real use: ≈ 30–50% (estimated, not yet measured).** Whether someone who uses After Effects for
-  a living can do client work in EffectCraft. What holds it back:
+  a living can do client work in Aurora. What holds it back:
   - **Fidelity is unmeasured.** No test compares our output with After Effects itself, and users
     are still finding behaviour bugs in features marked done.
-  - **After Effects projects can't be opened.** EffectCraft can't read `.aep` / `.aepx` files,
+  - **After Effects projects can't be opened.** Aurora can't read `.aep` / `.aepx` files,
     and third-party After Effects plug-ins can't run.
   - **Reliability is uneven across platforms.** Early Linux users hit basic problems: viewer
     panning, panel docking, drag-and-drop import. A Windows user found the font menus offered only
@@ -65,4 +65,4 @@ In priority order (details and "done" criteria in [docs/gaps.md](docs/gaps.md)):
 | G8 | Plug-in ecosystem on our WebAssembly plug-in API | After Effects plug-ins can't run here |
 | G9 | Localisation, accessibility, user documentation | Reach beyond English-speaking power users |
 
-Come tell us what matters most to you on [Discord](https://discord.gg/artcraft).
+Open an issue to tell us what matters most to you.

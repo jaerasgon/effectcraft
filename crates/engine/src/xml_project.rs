@@ -4,19 +4,19 @@
 //!
 //! ```xml
 //! <?xml version="1.0" encoding="UTF-8"?>
-//! <EffectCraftProject encoding="json" version="1">
+//! <AuroraProject encoding="json" version="1">
 //!   <obj>
 //!     <m n="version"><num>3</num></m>
 //!     <m n="items"><arr>…</arr></m>
 //!   </obj>
-//! </EffectCraftProject>
+//! </AuroraProject>
 //! ```
 //!
 //! `obj`/`m n="key"` (object members), `arr`, `str`, `num`, `bool`, `null`.
 
 use serde_json::{Map, Value};
 
-const ROOT: &str = "EffectCraftProject";
+const ROOT: &str = "AuroraProject";
 
 /// Whether `text` looks like an XML project.
 pub fn is_xml(text: &str) -> bool {
@@ -241,7 +241,7 @@ pub fn from_xml(text: &str) -> Result<String, String> {
     let mut p = P { s: text.trim_start_matches('\u{feff}'), i: 0 };
     let (root, _, _) = p.open()?;
     if root != ROOT {
-        return Err(format!("not an EffectCraft XML project (root <{root}>)"));
+        return Err(format!("not an Aurora XML project (root <{root}>)"));
     }
     let v = p.value()?;
     p.close(ROOT)?;

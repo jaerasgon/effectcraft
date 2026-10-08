@@ -176,7 +176,7 @@ fn add_effect(b: &mut Backend, a: &Value) -> Result<Reply> {
         }
     }
     // The undo step is named like effect.apply's own ("Apply Gaussian Blur").
-    let name = effect.as_str().map(|e| effectcraft_engine::effects::lookup(e).map_or(e, |s| s.name));
+    let name = effect.as_str().map(|e| aurora_engine::effects::lookup(e).map_or(e, |s| s.name));
     let label = name.map(|n| json!(format!("Apply {n}")));
     b.exec("engine.batch", obj(&[("steps", Some(&json!(steps))), ("label", label.as_ref())]))?;
     let tree = b.exec("layer.tree", obj(&[("layer", Some(layer)), ("comp", comp)]))?;
@@ -420,8 +420,7 @@ fn batch_tool(b: &mut Backend, a: &Value) -> Result<Reply> {
 fn screenshot(b: &mut Backend, a: &Value) -> Result<Reply> {
     let max_side = get(a, "max_side").and_then(Value::as_u64).unwrap_or(1600) as u32;
     let keep = get(a, "path").and_then(Value::as_str).map(str::to_string);
-    let path =
-        keep.clone().unwrap_or_else(|| std::env::temp_dir().join(format!("effectcraft-mcp-shot-{}.png", std::process::id())).to_string_lossy().into_owned());
+    let path = keep.clone().unwrap_or_else(|| std::env::temp_dir().join(format!("aurora-mcp-shot-{}.png", std::process::id())).to_string_lossy().into_owned());
     b.control("ui.screenshot", obj(&[("path", Some(&json!(path))), ("panel", get(a, "panel")), ("id", get(a, "id"))]))?;
     let bytes = std::fs::read(&path).map_err(|e| Error::Other(format!("screenshot: {e}")))?;
     if keep.is_none() {

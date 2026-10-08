@@ -5,13 +5,13 @@
 
 use std::sync::{Arc, Mutex};
 
-use effectcraft_color::Label;
-use effectcraft_export::render_queue::*;
-use effectcraft_export::{Job, JobOptions, Report, Sink, StorageQuota, export};
-use effectcraft_keyframe::{Keyframe, Value};
-use effectcraft_project::{Comp, ItemId, ItemKind, LayerSource, Project, Solid, build};
-use effectcraft_render::NoFootage;
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_export::render_queue::*;
+use aurora_export::{Job, JobOptions, Report, Sink, StorageQuota, export};
+use aurora_keyframe::{Keyframe, Value};
+use aurora_project::{Comp, ItemId, ItemKind, LayerSource, Project, Solid, build};
+use aurora_render::NoFootage;
+use aurora_time::{FrameRate, Tick};
 
 const W: u32 = 64;
 const H: u32 = 48;

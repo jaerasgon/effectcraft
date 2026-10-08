@@ -1,8 +1,8 @@
 //! Composition menu.
 
-use effectcraft_color::Label;
-use effectcraft_project::{Comp, ItemId, ItemKind, Marker};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_project::{Comp, ItemId, ItemKind, Marker};
+use aurora_time::{FrameRate, Tick};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, always, b_p, bad, comp_id, f_p, has_comp, str_p, time_p};
@@ -37,11 +37,11 @@ fn apply_settings(c: &mut Comp, p: &Value) {
         if dx != 0.0 || dy != 0.0 {
             for l in c.layers.iter_mut().filter(|l| l.parent.is_none()) {
                 let Some(pr) = l.props.prop_mut("transform/position") else { continue };
-                let shift = |v: &mut effectcraft_keyframe::Value| {
-                    if let effectcraft_keyframe::Value::Vec2(x) = v {
+                let shift = |v: &mut aurora_keyframe::Value| {
+                    if let aurora_keyframe::Value::Vec2(x) = v {
                         x[0] += dx;
                         x[1] += dy;
-                    } else if let effectcraft_keyframe::Value::Vec3(x) = v {
+                    } else if let aurora_keyframe::Value::Vec3(x) = v {
                         x[0] += dx;
                         x[1] += dy;
                     }
@@ -56,13 +56,13 @@ fn apply_settings(c: &mut Comp, p: &Value) {
     if let Some(t) = f_p(p, "startTime") {
         c.display_start = Tick::from_seconds_f64(t);
     } else if let Some(tc) = str_p(p, "startTimecode")
-        && let Ok(f) = effectcraft_time::parse_timecode(tc, c.frame_rate, c.frame_rate.supports_drop_frame(), 0)
+        && let Ok(f) = aurora_time::parse_timecode(tc, c.frame_rate, c.frame_rate.supports_drop_frame(), 0)
     {
         c.display_start = c.frame_rate.tick_of(f);
     }
     match str_p(p, "renderer").map(str::to_ascii_lowercase).as_deref() {
-        Some("classic3d" | "classic") => c.renderer = effectcraft_project::Renderer::Classic3D,
-        Some("advanced3d" | "advanced") => c.renderer = effectcraft_project::Renderer::Advanced3D,
+        Some("classic3d" | "classic") => c.renderer = aurora_project::Renderer::Classic3D,
+        Some("advanced3d" | "advanced") => c.renderer = aurora_project::Renderer::Advanced3D,
         _ => {}
     }
     if let Some(r) = rate_p(p) {
@@ -83,7 +83,7 @@ fn apply_settings(c: &mut Comp, p: &Value) {
     if let Some(Value::Array(bg)) = p.get("background") {
         let g = |i: usize| bg.get(i).and_then(Value::as_f64).unwrap_or(0.0) as f32;
         c.background = [g(0), g(1), g(2)];
-    } else if let Some(hex) = str_p(p, "background").and_then(effectcraft_color::Rgba::from_hex) {
+    } else if let Some(hex) = str_p(p, "background").and_then(aurora_color::Rgba::from_hex) {
         c.background = [hex.r, hex.g, hex.b];
     }
     if let Some(a) = f_p(p, "shutterAngle") {
@@ -113,7 +113,7 @@ fn new_comp(s: &mut Session, p: &Value) -> Result<Value> {
     let mut c = Comp::new(1920, 1080, rate, rate.snap_nearest(Tick::from_seconds_f64(10.0)));
     // Settings ▸ 3D ▸ Default 3D Renderer.
     if s.prefs.three_d.default_renderer == "advanced" {
-        c.renderer = effectcraft_project::Renderer::Advanced3D;
+        c.renderer = aurora_project::Renderer::Advanced3D;
     }
     apply_settings(&mut c, p);
     let id = s.edit("New Composition", None, |proj, st| {

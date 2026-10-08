@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Build and package EffectCraft for Linux (<arch> is x86_64 or aarch64):
+# Build and package Aurora for Linux (<arch> is x86_64 or aarch64):
 #
-#   $DIST/effectcraft-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
-#   $DIST/effectcraft-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
-#   $DIST/effectcraft-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
-#   $DIST/effectcraft-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
+#   $DIST/aurora-<version>-linux-<arch>.AppImage  any distro with glibc >= the build host's
+#   $DIST/aurora-<version>-linux-<arch>.deb       Debian, Ubuntu, Mint, Pop!_OS, ...
+#   $DIST/aurora-<version>-linux-<arch>.rpm       Fedora, openSUSE, RHEL, ...
+#   $DIST/aurora-<version>-linux-<arch>.tar.gz    plain FHS-style tree (bin/, share/)
 #
 # Usage: packaging/linux/package.sh [--skip-build] [--formats "appimage deb rpm tar"]
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 # shellcheck source=../env.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../env.sh"
 HERE="$ROOT/packaging/linux"
-APP_ID=ai.storyteller.effectcraft
+APP_ID=com.jaerasgon.aurora
 
 SKIP_BUILD=0
 FORMATS="appimage deb rpm tar"
@@ -34,13 +34,13 @@ case "$ARCH" in
   aarch64 | arm64) ARCH=aarch64; DEB_ARCH=arm64 ;;
   *) echo "unsupported architecture $ARCH" >&2; exit 2 ;;
 esac
-export EFFECTCRAFT_MAINTAINER="${EFFECTCRAFT_MAINTAINER:-EffectCraft maintainers <effectcraft@storyteller.ai>}"
-BASENAME="effectcraft-$VERSION-linux-$ARCH"
+export AURORA_MAINTAINER="${AURORA_MAINTAINER:-Aurora maintainers <noreply@users.noreply.github.com>}"
+BASENAME="aurora-$VERSION-linux-$ARCH"
 
-echo "==> EffectCraft $VERSION for Linux $ARCH ($FORMATS)"
+echo "==> Aurora $VERSION for Linux $ARCH ($FORMATS)"
 
 if [ "$SKIP_BUILD" = 0 ]; then
-  (cd "$ROOT" && cargo build --release --locked -p effectcraft -p effectcraft-cli)
+  (cd "$ROOT" && cargo build --release --locked -p aurora -p aurora-cli)
 fi
 BIN="$CARGO_TARGET_DIR/release"
 WORK="$CARGO_TARGET_DIR/linux-package"
@@ -48,18 +48,18 @@ STAGE="$WORK/root"
 rm -rf "$WORK"
 
 # ---- stage an FHS tree (shared by every format) -------------------------------------------------
-install -Dm755 "$BIN/effectcraft" "$STAGE/usr/bin/effectcraft"
-install -Dm755 "$BIN/effectcraft-cli" "$STAGE/usr/bin/effectcraft-cli"
-strip "$STAGE/usr/bin/effectcraft" "$STAGE/usr/bin/effectcraft-cli" 2>/dev/null || true
+install -Dm755 "$BIN/aurora" "$STAGE/usr/bin/aurora"
+install -Dm755 "$BIN/aurora-cli" "$STAGE/usr/bin/aurora-cli"
+strip "$STAGE/usr/bin/aurora" "$STAGE/usr/bin/aurora-cli" 2>/dev/null || true
 install -Dm644 "$HERE/$APP_ID.desktop" "$STAGE/usr/share/applications/$APP_ID.desktop"
 install -Dm644 "$HERE/$APP_ID.mime.xml" "$STAGE/usr/share/mime/packages/$APP_ID.xml"
 mkdir -p "$STAGE/usr/share/metainfo"
-sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$EFFECTCRAFT_BUILD_DATE/g" \
+sed -e "s/@VERSION@/$VERSION/g" -e "s/@DATE@/$AURORA_BUILD_DATE/g" \
   "$HERE/$APP_ID.metainfo.xml.in" >"$STAGE/usr/share/metainfo/$APP_ID.metainfo.xml"
 mkdir -p "$STAGE/usr/share/icons"
 cp -R "$ROOT/assets/app-icon/hicolor" "$STAGE/usr/share/icons/"
-mkdir -p "$STAGE/usr/share/doc/effectcraft"
-copy_docs "$STAGE/usr/share/doc/effectcraft"
+mkdir -p "$STAGE/usr/share/doc/aurora"
+copy_docs "$STAGE/usr/share/doc/aurora"
 
 if command -v desktop-file-validate >/dev/null; then
   desktop-file-validate "$STAGE/usr/share/applications/$APP_ID.desktop"
@@ -92,10 +92,10 @@ fi
 
 # ---- AppImage -----------------------------------------------------------------------------------
 if has appimage; then
-  APPDIR="$WORK/EffectCraft.AppDir"
+  APPDIR="$WORK/Aurora.AppDir"
   cp -R "$STAGE" "$APPDIR"
   mv "$APPDIR/usr/share/doc" "$WORK/doc-unused"
-  ln -s usr/bin/effectcraft "$APPDIR/AppRun"
+  ln -s usr/bin/aurora "$APPDIR/AppRun"
   cp "$HERE/$APP_ID.desktop" "$APPDIR/$APP_ID.desktop"
   cp "$ROOT/assets/app-icon/hicolor/256x256/apps/$APP_ID.png" "$APPDIR/$APP_ID.png"
   ln -s "$APP_ID.png" "$APPDIR/.DirIcon"
@@ -115,6 +115,6 @@ if has appimage; then
   echo "wrote $OUT"
 fi
 
-"$STAGE/usr/bin/effectcraft-cli" --version
+"$STAGE/usr/bin/aurora-cli" --version
 echo "==> done"
 ls -lh "$DIST"

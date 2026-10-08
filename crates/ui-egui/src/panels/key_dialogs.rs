@@ -5,7 +5,7 @@ use egui::{Color32, vec2};
 use serde_json::{Value, json};
 
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 #[derive(Clone, Debug, Default)]
 pub struct VelocityDraft {
@@ -59,7 +59,7 @@ fn num(v: &Value) -> f64 {
 }
 
 /// Animation ▸ Keyframe Velocity… (⇧⌘K) with keys selected.
-pub fn open_velocity(app: &mut EffectcraftApp) -> Result<(), String> {
+pub fn open_velocity(app: &mut AuroraApp) -> Result<(), String> {
     let info = app.session.execute("keys.info", json!({})).map_err(|e| e.to_string())?;
     let first = info.as_array().and_then(|a| a.first()).ok_or("select keyframes first")?;
     let dims = first["dims"].as_u64().unwrap_or(1).max(1) as usize;
@@ -89,7 +89,7 @@ pub fn open_velocity(app: &mut EffectcraftApp) -> Result<(), String> {
 }
 
 /// Animation ▸ Keyframe Interpolation… (⌥⌘K).
-pub fn open_interpolation(app: &mut EffectcraftApp) -> Result<(), String> {
+pub fn open_interpolation(app: &mut AuroraApp) -> Result<(), String> {
     let info = app.session.execute("keys.info", json!({})).map_err(|e| e.to_string())?;
     let a = info.as_array().cloned().unwrap_or_default();
     if a.is_empty() {
@@ -101,7 +101,7 @@ pub fn open_interpolation(app: &mut EffectcraftApp) -> Result<(), String> {
 }
 
 /// Layer ▸ Time ▸ Time Stretch…
-pub fn open_time_stretch(app: &mut EffectcraftApp) -> Result<(), String> {
+pub fn open_time_stretch(app: &mut AuroraApp) -> Result<(), String> {
     let lid = *app.session.state.selected_layers.first().ok_or("select a layer first")?;
     let l = app.session.active_comp().and_then(|c| c.layer(lid)).ok_or("no layer")?;
     let dur = (l.out_point - l.in_point).seconds();
@@ -110,7 +110,7 @@ pub fn open_time_stretch(app: &mut EffectcraftApp) -> Result<(), String> {
     Ok(())
 }
 
-fn buttons(ui: &mut egui::Ui, app: &mut EffectcraftApp, t: &Tokens, prefix: &str) -> (bool, bool) {
+fn buttons(ui: &mut egui::Ui, app: &mut AuroraApp, t: &Tokens, prefix: &str) -> (bool, bool) {
     let (mut ok, mut cancel) = (false, false);
     ui.add_space(14.0);
     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -124,12 +124,12 @@ fn buttons(ui: &mut egui::Ui, app: &mut EffectcraftApp, t: &Tokens, prefix: &str
     (ok, cancel)
 }
 
-fn drag(ui: &mut egui::Ui, app: &mut EffectcraftApp, id: &str, v: &mut f64, speed: f64, range: std::ops::RangeInclusive<f64>, suffix: &str, enabled: bool) {
+fn drag(ui: &mut egui::Ui, app: &mut AuroraApp, id: &str, v: &mut f64, speed: f64, range: std::ops::RangeInclusive<f64>, suffix: &str, enabled: bool) {
     let r = ui.add_enabled(enabled, egui::DragValue::new(v).speed(speed).range(range).max_decimals(2).suffix(suffix));
     app.auto.add(id, r.rect, id);
 }
 
-pub fn velocity(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn velocity(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut d = app.dialog_state.velocity.clone();
     let (mut ok, mut cancel) = (false, false);
     let title = if d.name.is_empty() { "Keyframe Velocity".to_string() } else { format!("Keyframe Velocity: {}", d.name) };
@@ -187,7 +187,7 @@ pub fn velocity(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
     }
 }
 
-fn combo(ui: &mut egui::Ui, app: &mut EffectcraftApp, id: &str, sel: &mut usize, opts: &[&str], enabled: bool) {
+fn combo(ui: &mut egui::Ui, app: &mut AuroraApp, id: &str, sel: &mut usize, opts: &[&str], enabled: bool) {
     ui.add_enabled_ui(enabled, |ui| {
         let r = egui::ComboBox::from_id_salt(id).width(200.0).selected_text(opts[*sel]).show_ui(ui, |ui| {
             for (i, o) in opts.iter().enumerate() {
@@ -198,7 +198,7 @@ fn combo(ui: &mut egui::Ui, app: &mut EffectcraftApp, id: &str, sel: &mut usize,
     });
 }
 
-pub fn interpolation(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn interpolation(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut d = app.dialog_state.interp.clone();
     let (mut ok, mut cancel) = (false, false);
     super::dialogs::modal(ctx, "Keyframe Interpolation", vec2(440.0, 250.0), t, |ui| {
@@ -241,7 +241,7 @@ pub fn interpolation(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) 
     }
 }
 
-pub fn time_stretch(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn time_stretch(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut d = app.dialog_state.stretch.clone();
     let (mut ok, mut cancel) = (false, false);
     super::dialogs::modal(ctx, "Time Stretch", vec2(420.0, 300.0), t, |ui| {

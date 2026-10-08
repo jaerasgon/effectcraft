@@ -1,5 +1,5 @@
 //! Home ▸ Templates: the New from Template gallery (engine model in
-//! `effectcraft_engine::templates`). Built-in templates are original projects authored in code;
+//! `aurora_engine::templates`). Built-in templates are original projects authored in code;
 //! user templates come from File ▸ Save as Template… (the config Templates folder). Thumbnails
 //! are rendered by our own renderer, one per frame, the first time the gallery shows them.
 //!
@@ -9,14 +9,14 @@
 use egui::{Align2, Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
-use effectcraft_engine::templates::{self, THUMB_H, THUMB_W, TemplateInfo};
+use aurora_engine::templates::{self, THUMB_H, THUMB_W, TemplateInfo};
 
 use crate::icons::{self, Icon};
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 /// The gallery's entries (re-listed when the user template files change).
-pub fn entries(app: &mut EffectcraftApp) -> Vec<TemplateInfo> {
+pub fn entries(app: &mut AuroraApp) -> Vec<TemplateInfo> {
     let files = templates::user_files(&app.session);
     if app.template_list.as_ref().map(|(f, _)| f) != Some(&files) {
         let list = templates::list(&app.session);
@@ -27,7 +27,7 @@ pub fn entries(app: &mut EffectcraftApp) -> Vec<TemplateInfo> {
 }
 
 /// A template's thumbnail texture; renders at most one missing thumbnail per frame (`budget`).
-fn thumb(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, budget: &mut bool) -> Option<egui::TextureHandle> {
+fn thumb(app: &mut AuroraApp, ctx: &egui::Context, id: &str, budget: &mut bool) -> Option<egui::TextureHandle> {
     if let Some(t) = app.template_thumbs.get(id) {
         return t.clone();
     }
@@ -50,7 +50,7 @@ fn fmt_secs(s: f64) -> String {
 }
 
 /// The Templates tab of the Home screen.
-pub fn home_tab(app: &mut EffectcraftApp, ui: &mut egui::Ui, area: Rect) {
+pub fn home_tab(app: &mut AuroraApp, ui: &mut egui::Ui, area: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let p = ui.painter().with_clip_rect(area);
@@ -173,7 +173,7 @@ pub fn home_tab(app: &mut EffectcraftApp, ui: &mut egui::Ui, area: Rect) {
 mod tests {
     use super::*;
 
-    fn frame(app: &mut EffectcraftApp, ctx: &egui::Context) {
+    fn frame(app: &mut AuroraApp, ctx: &egui::Context) {
         ctx.run_ui(Default::default(), |ui| {
             app.auto.begin_frame();
             if app.ui.start_screen {
@@ -185,9 +185,9 @@ mod tests {
         .clear();
     }
 
-    fn app_with_store() -> EffectcraftApp {
-        let s = effectcraft_engine::Session { config: Some(std::sync::Arc::new(effectcraft_engine::config::MemoryConfig::default())), ..Default::default() };
-        EffectcraftApp::new(s)
+    fn app_with_store() -> AuroraApp {
+        let s = aurora_engine::Session { config: Some(std::sync::Arc::new(aurora_engine::config::MemoryConfig::default())), ..Default::default() };
+        AuroraApp::new(s)
     }
 
     #[test]
@@ -267,7 +267,7 @@ mod tests {
         p["gamma"] = json!(1.8);
         app.session.execute("view.customRgb", p).unwrap();
         assert_eq!(app.session.prefs.custom_rgb.gamma, 1.8);
-        assert_eq!(app.session.state.viewer.simulation.profile, effectcraft_engine::viewer::SimProfile::MyCustom);
+        assert_eq!(app.session.state.viewer.simulation.profile, aurora_engine::viewer::SimProfile::MyCustom);
         let item = crate::menus::menu_items(&app).into_iter().find(|m| m.id == "view.customRgb").unwrap();
         assert_eq!(item.checked, Some(true));
     }

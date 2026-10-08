@@ -11,7 +11,7 @@ use crate::{Backend, Error, base64};
 /// Protocol revisions we speak, newest first. We answer with the client's if we know it.
 pub const PROTOCOL_VERSIONS: &[&str] = &["2025-06-18", "2025-03-26", "2024-11-05"];
 
-const INSTRUCTIONS: &str = "EffectCraft is an After Effects-class motion graphics compositor. Everything is an engine command: list_commands discovers ids and params, execute_command runs them (undoable). Typical flow: execute_command comp.new -> execute_command layer.newText / layer.newSolid (returns the layer id) -> set_property / add_keyframe -> execute_command effect.apply -> render_frame to look at the result. Inspect with get_project, get_comp and get_layer (every property node carries its `path`, e.g. `transform/position`, `effects/#1/blurriness`). Times are seconds. In bridge mode (app started with `--control <port>`) screenshot and the ui_* tools show and operate the live window.";
+const INSTRUCTIONS: &str = "Aurora is an After Effects-class motion graphics compositor. Everything is an engine command: list_commands discovers ids and params, execute_command runs them (undoable). Typical flow: execute_command comp.new -> execute_command layer.newText / layer.newSolid (returns the layer id) -> set_property / add_keyframe -> execute_command effect.apply -> render_frame to look at the result. Inspect with get_project, get_comp and get_layer (every property node carries its `path`, e.g. `transform/position`, `effects/#1/blurriness`). Times are seconds. In bridge mode (app started with `--control <port>`) screenshot and the ui_* tools show and operate the live window.";
 
 // JSON-RPC error codes.
 const PARSE_ERROR: i64 = -32700;
@@ -97,7 +97,7 @@ impl McpServer {
                 Ok(json!({
                     "protocolVersion": version,
                     "capabilities": {"tools": {"listChanged": false}},
-                    "serverInfo": {"name": "effectcraft", "title": format!("EffectCraft ({mode})"), "version": env!("CARGO_PKG_VERSION")},
+                    "serverInfo": {"name": "aurora", "title": format!("Aurora ({mode})"), "version": env!("CARGO_PKG_VERSION")},
                     "instructions": INSTRUCTIONS,
                 }))
             }

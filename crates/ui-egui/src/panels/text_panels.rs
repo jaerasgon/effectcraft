@@ -2,13 +2,13 @@
 //! Character and Paragraph panels show and change the selected text (creating style runs);
 //! otherwise they apply to the whole selected text layer.
 
-use effectcraft_engine::keyframe::{BaselineOption, Composer, Direction, FigureStyle, FigureWidth, Justify, Kerning, TextDoc};
-use effectcraft_engine::render::EvalCtx;
+use aurora_engine::keyframe::{BaselineOption, Composer, Direction, FigureStyle, FigureWidth, Justify, Kerning, TextDoc};
+use aurora_engine::render::EvalCtx;
 use egui::{Align2, Rect, Sense, pos2, vec2};
 use serde_json::json;
 
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 /// What the text panels act on: a text layer, a document whose base style and first paragraph
 /// show the selection's formatting, and the selected character range while editing.
@@ -31,11 +31,11 @@ impl TextTarget {
 }
 
 /// The edited text layer's selection, else the selected text layer's Source Text at the CTI.
-pub fn text_target(app: &EffectcraftApp) -> Option<TextTarget> {
+pub fn text_target(app: &AuroraApp) -> Option<TextTarget> {
     let comp = app.session.active_comp()?;
     let cid = app.session.active_comp_id()?;
     if let Some(e) = app.session.state.text_edit.clone()
-        && let Some(full) = effectcraft_engine::commands::text_edit::layer_doc(&app.session, e.layer)
+        && let Some(full) = aurora_engine::commands::text_edit::layer_doc(&app.session, e.layer)
     {
         let r = e.range();
         let style = e.pending.clone().unwrap_or_else(|| if r.is_empty() { full.insertion_style(r.start) } else { full.style_at(r.start) });
@@ -48,18 +48,13 @@ pub fn text_target(app: &EffectcraftApp) -> Option<TextTarget> {
         view.set_paras(vec![para; n]);
         return Some(TextTarget { layer: e.layer.0, doc: view, range: Some([r.start, r.end]) });
     }
-    let layer = app
-        .session
-        .state
-        .selected_layers
-        .iter()
-        .filter_map(|id| comp.layer(*id))
-        .find(|l| matches!(l.source, effectcraft_engine::project::LayerSource::Text))?;
+    let layer =
+        app.session.state.selected_layers.iter().filter_map(|id| comp.layer(*id)).find(|l| matches!(l.source, aurora_engine::project::LayerSource::Text))?;
     let ectx = EvalCtx { project: &app.session.project, comp_id: cid, comp, time: app.session.time(), expr: app.session.expr.as_deref(), footage: None };
-    effectcraft_engine::render::text::source_text(&ectx, layer).map(|d| TextTarget { layer: layer.id.0, doc: d, range: None })
+    aurora_engine::render::text::source_text(&ectx, layer).map(|d| TextTarget { layer: layer.id.0, doc: d, range: None })
 }
 
-fn toggle(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, r: Rect, id: &str, label: &str, on: bool, bold: bool) -> bool {
+fn toggle(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, r: Rect, id: &str, label: &str, on: bool, bold: bool) -> bool {
     let t = app.tokens;
     let resp = ui.interact(r, egui::Id::new(("text-toggle", id)), Sense::click());
     p.rect_filled(
@@ -79,7 +74,7 @@ fn toggle(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, r: Rec
     resp.clicked()
 }
 
-pub fn character(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn character(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     let ctx = ui.ctx().clone();
@@ -108,7 +103,7 @@ pub fn character(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     }
     app.auto.add("character.style", sr, "Font style");
     // The family's own styles.
-    let styles: Vec<String> = if widgets::popup_is_open(ui, spop) { effectcraft_engine::font_styles(&doc.font) } else { vec![] };
+    let styles: Vec<String> = if widgets::popup_is_open(ui, spop) { aurora_engine::font_styles(&doc.font) } else { vec![] };
     if let Some(st) = widgets::popup_menu(ui, spop, sr.left_bottom(), &styles, styles.iter().position(|s| *s == doc.style)).and_then(|i| styles.get(i)) {
         actions.push(json!({"style": st}));
     }
@@ -258,8 +253,8 @@ pub fn character(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
         }
     }
     // Variable Font Axes: one value per axis of a variable font (`character.axis.<tag>`).
-    let face = effectcraft_engine::text::resolve(&doc.font, &doc.style).face;
-    let axes = effectcraft_engine::text::variable::font_axes(face);
+    let face = aurora_engine::text::resolve(&doc.font, &doc.style).face;
+    let axes = aurora_engine::text::variable::font_axes(face);
     if !axes.is_empty() {
         y += 26.0;
         p.text(pos2(x0, y + 7.0), Align2::LEFT_CENTER, "Variable Font Axes", Tokens::semibold(11.0), t.text_dim);
@@ -302,13 +297,13 @@ pub fn character(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 /// The Character panel's OpenType popup: feature toggles (dimmed when the font lacks them),
 /// figure styles and the twenty stylistic sets. Every row is an automation target
 /// (`character.opentype.<key>`), and every change is a `layer.setText` attribute.
-fn opentype_popup(app: &mut EffectcraftApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::Pos2, doc: &TextDoc, actions: &mut Vec<serde_json::Value>) {
+fn opentype_popup(app: &mut AuroraApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::Pos2, doc: &TextDoc, actions: &mut Vec<serde_json::Value>) {
     let open_id = id.with("open");
     if !ui.data(|d| d.get_temp::<bool>(open_id).unwrap_or(false)) {
         return;
     }
     let t = app.tokens;
-    let feats = effectcraft_engine::font_features(&doc.font, &doc.style);
+    let feats = aurora_engine::font_features(&doc.font, &doc.style);
     let has = |tag: &str| feats.iter().any(|f| f == tag);
     let o = doc.opentype;
     let mut rects: Vec<(String, Rect, String)> = vec![];
@@ -432,7 +427,7 @@ pub fn paint_justify_glyph(p: &egui::Painter, r: Rect, j: Justify, c: egui::Colo
     }
 }
 
-pub fn paragraph(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn paragraph(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     let ctx = ui.ctx().clone();
@@ -543,11 +538,11 @@ pub fn paragraph(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 
 /// The font menu: recent fonts first, names in English or the fonts' own language, and a
 /// "Sample" preview in each font (Settings ▸ Type).
-fn font_popup(app: &EffectcraftApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::Pos2, current: &str) -> Option<String> {
+fn font_popup(app: &AuroraApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::Pos2, current: &str) -> Option<String> {
     if !ui.data(|d| d.get_temp::<bool>(id.with("open")).unwrap_or(false)) {
         return None;
     }
-    let rows = effectcraft_engine::font_menu(&app.session.prefs);
+    let rows = aurora_engine::font_menu(&app.session.prefs);
     let preview = app.session.prefs.type_.font_preview;
     let t = app.tokens;
     let mut chosen = None;
@@ -566,7 +561,7 @@ fn font_popup(app: &EffectcraftApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::
                         let lines: std::sync::Arc<Vec<Vec<[f32; 2]>>> = match ui.data(|d| d.get_temp(key)) {
                             Some(l) => l,
                             None => {
-                                let l = std::sync::Arc::new(effectcraft_engine::font_preview(&r.family, 14.0));
+                                let l = std::sync::Arc::new(aurora_engine::font_preview(&r.family, 14.0));
                                 ui.data_mut(|d| d.insert_temp(key, l.clone()));
                                 l
                             }
@@ -594,7 +589,7 @@ fn font_popup(app: &EffectcraftApp, ui: &mut egui::Ui, id: egui::Id, pos: egui::
 /// Align panel: Align Layers to Selection / Composition, the six align buttons and the six
 /// Distribute Layers buttons. Buttons run `layer.align {edge, to}` and `layer.distribute
 /// {mode}` on the selected layers.
-pub fn align(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn align(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     let x0 = rect.min.x + 10.0;

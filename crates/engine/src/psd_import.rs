@@ -12,14 +12,14 @@
 
 use std::sync::Arc;
 
-use effectcraft_color::BlendMode;
-use effectcraft_color::Label;
-use effectcraft_keyframe::{Gradient, Justify, ShapePath, TextDoc, Value};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::styles::{self, STYLE_BLEND_MODES};
-use effectcraft_project::{AlphaMode, Comp, Footage, FootageKind, ItemId, ItemKind, Layer, LayerSource, MaskMode, Project, PropGroup, Solid, SourceLayer};
-use effectcraft_psd::{Adjustment, DValue, Descriptor, Node, Psd};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::BlendMode;
+use aurora_color::Label;
+use aurora_keyframe::{Gradient, Justify, ShapePath, TextDoc, Value};
+use aurora_project::build::{self, Ids};
+use aurora_project::styles::{self, STYLE_BLEND_MODES};
+use aurora_project::{AlphaMode, Comp, Footage, FootageKind, ItemId, ItemKind, Layer, LayerSource, MaskMode, Project, PropGroup, Solid, SourceLayer};
+use aurora_psd::{Adjustment, DValue, Descriptor, Node, Psd};
+use aurora_time::{FrameRate, Tick};
 
 /// Photoshop blend mode key → compositor mode (`pass` = pass through, handled by collapsing).
 pub fn blend_mode(key: &str) -> BlendMode {
@@ -168,11 +168,11 @@ fn footage_item(proj: &mut Project, cx: &mut Ctx, index: usize, name: &str) -> (
 
 /// Size of an embedded file's image: the smart object's recorded size, else the embedded
 /// document's header (Photoshop, PNG).
-fn embedded_size(so: &effectcraft_psd::SmartObject, data: &[u8]) -> Option<(u32, u32)> {
+fn embedded_size(so: &aurora_psd::SmartObject, data: &[u8]) -> Option<(u32, u32)> {
     if let Some([w, h]) = so.size.filter(|s| s[0] >= 1.0 && s[1] >= 1.0) {
         return Some((w.round() as u32, h.round() as u32));
     }
-    if effectcraft_psd::is_psd(data) && data.len() >= 22 {
+    if aurora_psd::is_psd(data) && data.len() >= 22 {
         let h = u32::from_be_bytes([data[14], data[15], data[16], data[17]]);
         let w = u32::from_be_bytes([data[18], data[19], data[20], data[21]]);
         return Some((w, h));
@@ -215,7 +215,7 @@ fn smart_object_layer(proj: &mut Project, cx: &mut Ctx, comp: &Comp, index: usiz
         has_video: true,
         alpha: AlphaMode::Straight,
         loop_count: 1,
-        codec: if effectcraft_psd::is_psd(data) { "PSD".into() } else { "PSD (embedded image)".into() },
+        codec: if aurora_psd::is_psd(data) { "PSD".into() } else { "PSD (embedded image)".into() },
         layer: Some(SourceLayer { index: index as u32, name: name.to_string(), layer_size: true, embedded: Some(so.uuid.clone()), placed: bake }),
         ..Default::default()
     };
@@ -321,7 +321,7 @@ fn build_layer(proj: &mut Project, cx: &mut Ctx, comp: &Comp, n: &Node) -> Optio
 }
 
 /// Where layer space's origin sits in document pixels.
-fn layer_origin(pl: &effectcraft_psd::Layer, retain: bool, layer: &Layer) -> [f64; 2] {
+fn layer_origin(pl: &aurora_psd::Layer, retain: bool, layer: &Layer) -> [f64; 2] {
     if let Some(t) = &pl.text {
         return [t.transform[4], t.transform[5]];
     }
@@ -354,7 +354,7 @@ fn font_names(ps: &str) -> (String, String) {
     }
 }
 
-fn text_doc(t: &effectcraft_psd::TextInfo) -> TextDoc {
+fn text_doc(t: &aurora_psd::TextInfo) -> TextDoc {
     let mut d = TextDoc::default();
     d.set_text(&t.text);
     let [xx, xy, yx, yy, _, _] = t.transform;
@@ -396,7 +396,7 @@ fn text_doc(t: &effectcraft_psd::TextInfo) -> TextDoc {
     d
 }
 
-fn text_layer(proj: &mut Project, comp: &Comp, name: &str, t: &effectcraft_psd::TextInfo) -> Layer {
+fn text_layer(proj: &mut Project, comp: &Comp, name: &str, t: &aurora_psd::TextInfo) -> Layer {
     let mut l = build::layer(proj, comp, name, LayerSource::Text, (0, 0), None);
     if let Some(p) = l.props.prop_mut("text/sourceText") {
         p.value = Value::Text(Box::new(text_doc(t)));
@@ -425,9 +425,9 @@ fn adjustment_layer(proj: &mut Project, comp: &Comp, name: &str) -> Layer {
 }
 
 fn add_effect(proj: &mut Project, l: &mut Layer, effect: &str, comp: &Comp, params: &[(&str, Value)]) {
-    let Some(spec) = effectcraft_effects::lookup(effect) else { return };
+    let Some(spec) = aurora_effects::lookup(effect) else { return };
     let mut ids = Ids(&mut proj.next_id);
-    let mut g = effectcraft_effects::instantiate(spec, &mut ids, spec.name, [comp.width as f64, comp.height as f64]);
+    let mut g = aurora_effects::instantiate(spec, &mut ids, spec.name, [comp.width as f64, comp.height as f64]);
     for (k, v) in params {
         // Paths reach parameters in twirl-down groups (`master/exposure`).
         if let Some(p) = g.prop_mut(k) {
@@ -697,7 +697,7 @@ pub fn editable_text(proj: &mut Project, comp: &Comp, layer: &Layer, psd: &Psd, 
     l.out_point = layer.out_point;
     l.start_time = layer.start_time;
     if let (Some(o), Some(p)) = (layer.props.prop("transform/opacity"), l.props.prop_mut("transform/opacity")) {
-        *p = effectcraft_project::Property { uid: p.uid, ..o.clone() };
+        *p = aurora_project::Property { uid: p.uid, ..o.clone() };
     }
     Some(l)
 }

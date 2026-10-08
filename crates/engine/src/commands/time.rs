@@ -1,7 +1,7 @@
 //! Time navigation (CTI) commands.
 
-use effectcraft_project::{Comp, TimeDisplayStyle};
-use effectcraft_time::Tick;
+use aurora_project::{Comp, TimeDisplayStyle};
+use aurora_time::Tick;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, f_p, has_comp, str_p};
@@ -22,9 +22,9 @@ pub fn display_time(s: &Session, comp: &Comp, t: Tick) -> String {
     match st.time_display {
         TimeDisplayStyle::Frames => format!("{:05}", fr.frame_at(t) + st.frame_start),
         TimeDisplayStyle::Feet35 | TimeDisplayStyle::Feet16 => {
-            effectcraft_time::format_feet_frames(fr.frame_at(t + comp.display_start) + st.frame_start, st.time_display.frames_per_foot().unwrap_or(16))
+            aurora_time::format_feet_frames(fr.frame_at(t + comp.display_start) + st.frame_start, st.time_display.frames_per_foot().unwrap_or(16))
         }
-        TimeDisplayStyle::Timecode => effectcraft_time::format_timecode_ae(fr.frame_at(t + comp.display_start), fr, false),
+        TimeDisplayStyle::Timecode => aurora_time::format_timecode_ae(fr.frame_at(t + comp.display_start), fr, false),
     }
 }
 
@@ -36,9 +36,9 @@ pub fn parse_display_time(s: &Session, comp: &Comp, text: &str, current: i64) ->
     match st.time_display.frames_per_foot() {
         Some(pf) => {
             let start = fr.frame_at(comp.display_start) + st.frame_start;
-            effectcraft_time::parse_feet_frames(text, pf, current + start).map(|f| f - start).map_err(|e| e.0)
+            aurora_time::parse_feet_frames(text, pf, current + start).map(|f| f - start).map_err(|e| e.0)
         }
-        None => effectcraft_time::parse_timecode(text, fr, fr.supports_drop_frame(), current).map_err(|e| e.0),
+        None => aurora_time::parse_timecode(text, fr, fr.supports_drop_frame(), current).map_err(|e| e.0),
     }
 }
 

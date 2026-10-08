@@ -1,0 +1,8 @@
+asset:        com.jaerasgon.aurora.png
+title:        Aurora app icon, Linux hicolor 16x16
+author:       Jaerasgon
+source:       original work
+license:      MIT OR Apache-2.0
+license-file: assets/app-icon/LICENSE.txt
+added:        2026-10-08 by Jaerasgon (Claude agent, Aurora rebrand)
+notes:        Rendered from aurora.svg by packaging/icons.sh.

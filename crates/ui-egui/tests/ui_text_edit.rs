@@ -1,27 +1,27 @@
 //! Headless checks for on-canvas text editing in the viewer and the Character / Paragraph panels
 //! acting on the selection (egui_kittest, UI logic only: no GPU needed).
 
-use effectcraft_engine::Session;
-use effectcraft_engine::commands::text_edit::layer_doc;
-use effectcraft_engine::project::LayerId;
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::dock::PanelKind;
+use aurora_engine::Session;
+use aurora_engine::commands::text_edit::layer_doc;
+use aurora_engine::project::LayerId;
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::dock::PanelKind;
 use egui::{Event, Key, Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
 use serde_json::json;
 
-fn app() -> EffectcraftApp {
+fn app() -> AuroraApp {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Type", "width": 640, "height": 360, "duration": 2})).unwrap();
-    EffectcraftApp::new(s)
+    AuroraApp::new(s)
 }
 
-fn rect(h: &Harness<'_, EffectcraftApp>, id: &str) -> egui::Rect {
+fn rect(h: &Harness<'_, AuroraApp>, id: &str) -> egui::Rect {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}"));
     egui::Rect::from_min_size(egui::pos2(e.rect[0], e.rect[1]), egui::vec2(e.rect[2], e.rect[3]))
 }
 
-fn click(h: &mut Harness<'_, EffectcraftApp>, p: Pos2, modifiers: Modifiers) {
+fn click(h: &mut Harness<'_, AuroraApp>, p: Pos2, modifiers: Modifiers) {
     h.input_mut().events.push(Event::PointerMoved(p));
     h.input_mut().events.push(Event::PointerButton { pos: p, button: PointerButton::Primary, pressed: true, modifiers });
     h.run_steps(1);
@@ -29,18 +29,18 @@ fn click(h: &mut Harness<'_, EffectcraftApp>, p: Pos2, modifiers: Modifiers) {
     h.run_steps(2);
 }
 
-fn key(h: &mut Harness<'_, EffectcraftApp>, key: Key, modifiers: Modifiers) {
+fn key(h: &mut Harness<'_, AuroraApp>, key: Key, modifiers: Modifiers) {
     h.input_mut().events.push(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
     h.input_mut().events.push(Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers });
     h.run_steps(2);
 }
 
-fn type_text(h: &mut Harness<'_, EffectcraftApp>, t: &str) {
+fn type_text(h: &mut Harness<'_, AuroraApp>, t: &str) {
     h.input_mut().events.push(Event::Text(t.into()));
     h.run_steps(2);
 }
 
-fn edited(h: &Harness<'_, EffectcraftApp>) -> (u64, String, usize, usize) {
+fn edited(h: &Harness<'_, AuroraApp>) -> (u64, String, usize, usize) {
     let s = &h.state().session;
     let e = s.state.text_edit.clone().expect("editing");
     (e.layer.0, layer_doc(s, e.layer).unwrap().text, e.anchor, e.caret)
@@ -61,8 +61,8 @@ fn type_tool_skips_hidden_and_unsoloed_text_layers() {
         let (target, value) = if switch == "video" { (ids[1], false) } else { (ids[0], true) };
         s.execute("layer.setSwitch", json!({"layers": [target], "switch": switch, "value": value})).unwrap();
         s.execute("edit.deselectAll", json!({})).unwrap();
-        let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(move |_| EffectcraftApp::new(s));
-        h.state_mut().ui.tool = effectcraft_ui_egui::state::Tool::Type;
+        let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(move |_| AuroraApp::new(s));
+        h.state_mut().ui.tool = aurora_ui_egui::state::Tool::Type;
         h.run_steps(3);
         let comp = rect(&h, "viewer.comp");
         let k = comp.width() / 640.0;
@@ -75,13 +75,13 @@ fn type_tool_skips_hidden_and_unsoloed_text_layers() {
 fn modal_blocks_background_text_events() {
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| app());
     h.run_steps(3);
-    h.state_mut().ui.tool = effectcraft_ui_egui::state::Tool::Type;
+    h.state_mut().ui.tool = aurora_ui_egui::state::Tool::Type;
     h.run_steps(1);
     let p = rect(&h, "viewer.comp").center();
     click(&mut h, p, Modifiers::NONE);
     type_text(&mut h, "Preserve");
     let before = edited(&h).1;
-    h.state_mut().dialog = Some(effectcraft_ui_egui::Dialog::About);
+    h.state_mut().dialog = Some(aurora_ui_egui::Dialog::About);
     h.run_steps(3);
     h.input_mut().events.push(Event::Text("changed".into()));
     h.input_mut().events.push(Event::Paste("pasted".into()));
@@ -94,7 +94,7 @@ fn type_tool_click_type_edit_and_commit() {
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).with_step_dt(1.0 / 60.0).build_eframe(|_| app());
     h.state_mut().show_panel(PanelKind::Composition);
     h.run_steps(3);
-    h.state_mut().ui.tool = effectcraft_ui_egui::state::Tool::Type;
+    h.state_mut().ui.tool = aurora_ui_egui::state::Tool::Type;
     h.run_steps(1);
     let comp = rect(&h, "viewer.comp");
     // Click: a point text layer in edit mode, caret ready.
@@ -154,7 +154,7 @@ fn double_click_enters_editing_and_selects_words() {
     s.execute("comp.new", json!({"name": "Type", "width": 640, "height": 360, "duration": 2})).unwrap();
     let lid =
         s.execute("layer.newText", json!({"text": "alpha beta", "size": 80, "position": [100, 200], "justify": "left"})).unwrap()["layer"].as_u64().unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).with_step_dt(1.0 / 60.0).build_eframe(move |_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).with_step_dt(1.0 / 60.0).build_eframe(move |_| AuroraApp::new(s));
     h.state_mut().show_panel(PanelKind::Composition);
     h.run_steps(3);
     // A point inside "beta" (comp space → window).
@@ -185,7 +185,7 @@ fn double_click_enters_editing_and_selects_words() {
     let r = rect(&h, "paragraph.right");
     click(&mut h, r.center(), Modifiers::NONE);
     let doc = layer_doc(&h.state().session, LayerId(lid)).unwrap();
-    assert_eq!(doc.justify, effectcraft_engine::keyframe::Justify::Right);
+    assert_eq!(doc.justify, aurora_engine::keyframe::Justify::Right);
     for id in
         ["paragraph.indentLeft", "paragraph.spaceBefore", "paragraph.direction", "paragraph.composer", "paragraph.hangingPunctuation", "paragraph.justifyAll"]
     {
@@ -198,7 +198,7 @@ fn type_tool_drag_makes_paragraph_text_with_box_handles() {
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).with_step_dt(1.0 / 60.0).build_eframe(|_| app());
     h.state_mut().show_panel(PanelKind::Composition);
     h.run_steps(3);
-    h.state_mut().ui.tool = effectcraft_ui_egui::state::Tool::Type;
+    h.state_mut().ui.tool = aurora_ui_egui::state::Tool::Type;
     h.run_steps(1);
     let comp = rect(&h, "viewer.comp");
     let a = comp.min + egui::vec2(comp.width() * 0.2, comp.height() * 0.2);

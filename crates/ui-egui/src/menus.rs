@@ -1,5 +1,5 @@
 //! Menus, keyboard shortcuts and UI-level commands. The menu bar is the engine's After Effects
-//! menu tree (`effectcraft_engine::menus`): every entry is an engine command, and frontend-only
+//! menu tree (`aurora_engine::menus`): every entry is an engine command, and frontend-only
 //! commands (viewer zoom, panels, dialogs…) come back as `Event::Frontend` and are performed by
 //! [`frontend`]. [`UI_COMMANDS`] holds the remaining UI-only shortcuts (tools, timeline
 //! navigation, reveal keys). `invoke` is the single entry point used by menus, shortcuts and the
@@ -7,10 +7,10 @@
 
 use serde_json::{Value, json};
 
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::dock::PanelKind;
 use crate::state::{Resolution, Tool};
-use effectcraft_engine::menus::{MenuEntry, MenuNode};
+use aurora_engine::menus::{MenuEntry, MenuNode};
 
 pub struct UiCommand {
     pub id: &'static str,
@@ -124,7 +124,7 @@ pub fn panel_command_id(p: PanelKind) -> String {
 
 /// The reveal shortcuts (P, S, R, T, A, E, M, F, L…). `add` (Shift+key) adds the property to
 /// (or removes it from) those already revealed instead of replacing them.
-pub fn reveal(app: &mut EffectcraftApp, kind: &str, now: f64, add: bool) {
+pub fn reveal(app: &mut AuroraApp, kind: &str, now: f64, add: bool) {
     // The double-press shortcuts: the same key again within 0.6 s reveals its second set (LL
     // Waveform, TT Mask Opacity, MM all mask properties, EE Expressions, RR Time Remap, AA
     // Material Options, PP paint / Roto Brush / Puppet, SS selected properties, FF missing
@@ -178,7 +178,7 @@ pub fn reveal(app: &mut EffectcraftApp, kind: &str, now: f64, add: bool) {
 
 /// Show Time Remap on the layers of a `layer.enableTimeRemap` (`layers` by id, else the
 /// selected ones) that have it now.
-fn reveal_time_remap(app: &mut EffectcraftApp, params: &Value) {
+fn reveal_time_remap(app: &mut AuroraApp, params: &Value) {
     let asked: Vec<u64> = match params.get("layers").and_then(Value::as_array) {
         Some(a) => a.iter().filter_map(Value::as_u64).collect(),
         None => app.session.state.selected_layers.iter().map(|l| l.0).collect(),
@@ -193,7 +193,7 @@ fn reveal_time_remap(app: &mut EffectcraftApp, params: &Value) {
 /// After Alt+Shift+P (A, S, R, T) the Timeline shows the property on each layer it keyed, as in
 /// After Effects: added to what a reveal shortcut shows, else with the layer's Transform twirled
 /// open, else alone like P.
-fn reveal_keyed(app: &mut EffectcraftApp, keyed: &Value, kind: &str) {
+fn reveal_keyed(app: &mut AuroraApp, keyed: &Value, kind: &str) {
     let layers: std::collections::BTreeSet<u64> = keyed.as_array().into_iter().flatten().filter_map(|k| k.get("layer").and_then(Value::as_u64)).collect();
     let Some(comp) = app.session.active_comp() else { return };
     let tl = &mut app.ui.timeline;
@@ -207,7 +207,7 @@ fn reveal_keyed(app: &mut EffectcraftApp, keyed: &Value, kind: &str) {
                 }
             }
             None if tl.open_layers.contains(&id) => {
-                if let Some(tr) = comp.layer(effectcraft_engine::project::LayerId(id)).and_then(|l| l.transform()) {
+                if let Some(tr) = comp.layer(aurora_engine::project::LayerId(id)).and_then(|l| l.transform()) {
                     tl.open_groups.insert(tr.uid);
                 }
             }
@@ -220,7 +220,7 @@ fn reveal_keyed(app: &mut EffectcraftApp, keyed: &Value, kind: &str) {
 }
 
 /// The layers a reveal shortcut acts on: the selected ones, else every layer of the active comp.
-fn reveal_targets(app: &EffectcraftApp) -> Vec<u64> {
+fn reveal_targets(app: &AuroraApp) -> Vec<u64> {
     if app.session.state.selected_layers.is_empty() {
         app.session.active_comp().map(|c| c.layers.iter().map(|l| l.id.0).collect()).unwrap_or_default()
     } else {
@@ -233,7 +233,7 @@ fn no_params(p: &Value) -> bool {
 }
 
 /// Execute a UI or engine command by id.
-pub fn invoke(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
+pub fn invoke(app: &mut AuroraApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
     if no_params(&params) && app.ui.focused == PanelKind::Project {
         match id {
             "edit.duplicate" => return run_engine(app, ctx, "project.duplicate", json!({})),
@@ -429,14 +429,14 @@ pub fn invoke(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, params: V
         app.set_theme(ctx, k);
         return Ok(Value::Null);
     }
-    let timing = |app: &mut EffectcraftApp, op: &str| app.session.execute("layer.timing", json!({"op": op})).map_err(|e| e.to_string());
+    let timing = |app: &mut AuroraApp, op: &str| app.session.execute("layer.timing", json!({"op": op})).map_err(|e| e.to_string());
     match id {
         "playback.ramPreview" => {
-            app.toggle_play_with(now, effectcraft_engine::preview::PreviewShortcut::Numpad0);
+            app.toggle_play_with(now, aurora_engine::preview::PreviewShortcut::Numpad0);
             return Ok(json!({"playing": app.playback.playing}));
         }
         "playback.preview.shiftSpacebar" | "playback.preview.shiftNumpad0" | "playback.preview.altNumpad0" => {
-            let sc = effectcraft_engine::preview::PreviewShortcut::parse(id.trim_start_matches("playback.preview.")).ok_or("unknown preview shortcut")?;
+            let sc = aurora_engine::preview::PreviewShortcut::parse(id.trim_start_matches("playback.preview.")).ok_or("unknown preview shortcut")?;
             app.toggle_play_with(now, sc);
             return Ok(json!({"playing": app.playback.playing}));
         }
@@ -611,11 +611,11 @@ pub fn invoke(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, params: V
 const COPY_COMMANDS: &[&str] =
     &["edit.copy", "edit.cut", "edit.copyWithPropertyLinks", "edit.copyWithRelativePropertyLinks", "edit.copyExpressionOnly", "keys.copy", "effect.copy"];
 
-/// A line for the system clipboard naming what EffectCraft copied. The system clipboard must
+/// A line for the system clipboard naming what Aurora copied. The system clipboard must
 /// hold something: with nothing on it, the windowing layer sends no paste event for Ctrl+V.
-fn clipboard_note(s: &effectcraft_engine::Session) -> String {
+fn clipboard_note(s: &aurora_engine::Session) -> String {
     let st = &s.state;
-    let n = |n: usize, one: &str, many: &str| format!("EffectCraft: {n} {}", if n == 1 { one } else { many });
+    let n = |n: usize, one: &str, many: &str| format!("Aurora: {n} {}", if n == 1 { one } else { many });
     if st.clip_is_keys && !st.key_clipboard.is_empty() {
         n(st.key_clipboard.iter().map(|c| c.keys.len()).sum(), "keyframe", "keyframes")
     } else if !st.effect_clipboard.is_empty() {
@@ -623,13 +623,13 @@ fn clipboard_note(s: &effectcraft_engine::Session) -> String {
     } else if !st.contents_clipboard.is_empty() {
         n(st.contents_clipboard.len(), "shape item", "shape items")
     } else if st.link_clipboard.is_some() {
-        "EffectCraft: property links".into()
+        "Aurora: property links".into()
     } else {
         n(st.clipboard.len(), "layer", "layers")
     }
 }
 
-fn run_engine(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
+fn run_engine(app: &mut AuroraApp, ctx: &egui::Context, id: &str, params: Value) -> Result<Value, String> {
     let r = app.session.execute(id, params).map_err(|e| e.to_string());
     if let Err(e) = &r {
         app.ui.status = e.clone();
@@ -639,7 +639,7 @@ fn run_engine(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, params: V
     let events = app.session.drain_events();
     for ev in events {
         match ev {
-            effectcraft_engine::Event::Frontend { command, params } => {
+            aurora_engine::Event::Frontend { command, params } => {
                 if let Err(e) = frontend(app, ctx, &command, params) {
                     app.ui.status = e;
                 }
@@ -656,7 +656,7 @@ fn toggle(slot: &mut bool, p: &Value) -> Value {
 }
 
 /// Perform a frontend command (from `Event::Frontend`).
-pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Value) -> Result<Value, String> {
+pub fn frontend(app: &mut AuroraApp, ctx: &egui::Context, id: &str, p: Value) -> Result<Value, String> {
     let now = ctx.input(|i| i.time);
     let v = &mut app.ui.viewer;
     Ok(match id {
@@ -668,7 +668,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
         // Audio scrubbing: one frame of audio at `time` (default the current time).
         "playback.scrubAudio" => {
             let cid = app.session.active_comp_id().ok_or("no composition")?;
-            let t = p.get("time").and_then(Value::as_f64).map_or(app.session.time(), effectcraft_engine::time::Tick::from_seconds_f64);
+            let t = p.get("time").and_then(Value::as_f64).map_or(app.session.time(), aurora_engine::time::Tick::from_seconds_f64);
             app.scrub_audio(cid, t, now);
             json!({"playing": app.scrub.is_some()})
         }
@@ -685,7 +685,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
         }
         "app.settings" => {
             let page = p.get("page").and_then(Value::as_str).unwrap_or("general");
-            crate::panels::settings::open(app, effectcraft_engine::prefs::page_id(page).unwrap_or("general"));
+            crate::panels::settings::open(app, aurora_engine::prefs::page_id(page).unwrap_or("general"));
             Value::Null
         }
         "app.gpuInfo" => {
@@ -754,8 +754,8 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
             // The play button and Spacebar: `{shortcut?}` picks which Preview panel shortcut's
             // options to play with (default Spacebar).
             let sc = match p.get("shortcut").and_then(Value::as_str) {
-                Some(k) => effectcraft_engine::preview::PreviewShortcut::parse(k).ok_or_else(|| format!("unknown preview shortcut `{k}`"))?,
-                None => effectcraft_engine::preview::PreviewShortcut::Spacebar,
+                Some(k) => aurora_engine::preview::PreviewShortcut::parse(k).ok_or_else(|| format!("unknown preview shortcut `{k}`"))?,
+                None => aurora_engine::preview::PreviewShortcut::Spacebar,
             };
             app.toggle_play_with(now, sc);
             json!({"playing": app.playback.playing, "shortcut": sc.id()})
@@ -847,7 +847,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
                 "white" => Some([0xff, 0xff, 0xff]),
                 "custom" => Some(v.custom_pasteboard),
                 hex => {
-                    let c = effectcraft_engine::color::Rgba::from_hex(hex).ok_or_else(|| format!("unknown colour `{hex}`"))?;
+                    let c = aurora_engine::color::Rgba::from_hex(hex).ok_or_else(|| format!("unknown colour `{hex}`"))?;
                     let rgb = [(c.r * 255.0).round() as u8, (c.g * 255.0).round() as u8, (c.b * 255.0).round() as u8];
                     v.custom_pasteboard = rgb;
                     Some(rgb)
@@ -1022,7 +1022,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
         "file.interpretFootage" => {
             // Import ▸ Interpret Unlabeled Alpha As: Ask User.
             if let Some(i) = p.get("item").and_then(Value::as_u64) {
-                app.session.state.project_selection = vec![effectcraft_engine::project::ItemId(i)];
+                app.session.state.project_selection = vec![aurora_engine::project::ItemId(i)];
             }
             crate::panels::dialogs::open_form(app, "file.interpretFootage", &json!({}));
             Value::Null
@@ -1061,7 +1061,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
                 comp.as_ref().is_some_and(|c| {
                     targets
                         .iter()
-                        .filter_map(|l| c.layer(effectcraft_engine::project::LayerId(*l)))
+                        .filter_map(|l| c.layer(aurora_engine::project::LayerId(*l)))
                         .any(|l| l.props.find(u).is_some() || l.props.find_group(u).is_some())
                 })
             };
@@ -1080,7 +1080,7 @@ pub fn frontend(app: &mut EffectcraftApp, ctx: &egui::Context, id: &str, p: Valu
 }
 
 /// Commands that need a file or folder path: ask the host's file dialog when `params` lacks one.
-fn file_dialog(app: &mut EffectcraftApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
+fn file_dialog(app: &mut AuroraApp, id: &str, params: &Value) -> Option<Result<Value, String>> {
     enum Ask {
         Import,
         OpenProject,
@@ -1183,34 +1183,31 @@ pub struct MenuItem {
 
 /// Top-level menus in order.
 pub fn menus() -> Vec<&'static str> {
-    effectcraft_engine::menus::top_level()
+    aurora_engine::menus::top_level()
 }
 
-pub(crate) fn entry_label(app: &EffectcraftApp, e: &MenuEntry) -> String {
+pub(crate) fn entry_label(app: &AuroraApp, e: &MenuEntry) -> String {
     let shown = match e.command.as_str() {
         "edit.undo" => app.session.history.undo.last().map(|u| format!("Undo {}", u.0)).unwrap_or_else(|| "Can't Undo".into()),
         "edit.redo" => app.session.history.redo.last().map(|u| format!("Redo {}", u.0)).unwrap_or_else(|| "Can't Redo".into()),
         // Window ▸ Layer: the layer open in the Layer panel.
         "window.panel" if e.params.get("panel").and_then(Value::as_str) == Some("layer") => {
-            let name = app
-                .ui
-                .layer_panel
-                .and_then(|id| app.session.active_comp().and_then(|c| c.layer(effectcraft_engine::project::LayerId(id))))
-                .map(|l| l.name.clone());
+            let name =
+                app.ui.layer_panel.and_then(|id| app.session.active_comp().and_then(|c| c.layer(aurora_engine::project::LayerId(id)))).map(|l| l.name.clone());
             format!("Layer: {}", name.unwrap_or_else(|| "(none)".into()))
         }
-        _ => effectcraft_engine::menus::entry_label(&app.session, e),
+        _ => aurora_engine::menus::entry_label(&app.session, e),
     };
     crate::i18n::entry(app, e, shown)
 }
 
 /// The entry's shortcut in the active keyboard shortcut preset.
-pub(crate) fn entry_shortcut(app: &EffectcraftApp, e: &MenuEntry) -> Option<String> {
+pub(crate) fn entry_shortcut(app: &AuroraApp, e: &MenuEntry) -> Option<String> {
     app.session.shortcuts().shortcut_of(&e.command, &e.params).map(str::to_string)
 }
 
 /// Check-mark state of frontend toggles (engine state is answered by the engine).
-pub(crate) fn entry_checked(app: &EffectcraftApp, e: &MenuEntry) -> Option<bool> {
+pub(crate) fn entry_checked(app: &AuroraApp, e: &MenuEntry) -> Option<bool> {
     let v = &app.ui.viewer;
     let pstr = |k: &str| e.params.get(k).and_then(Value::as_str);
     match e.command.as_str() {
@@ -1238,11 +1235,11 @@ pub(crate) fn entry_checked(app: &EffectcraftApp, e: &MenuEntry) -> Option<bool>
             };
             Some(pstr("color") == Some(cur))
         }
-        _ => effectcraft_engine::menus::checked(&app.session, &e.command, &e.params),
+        _ => aurora_engine::menus::checked(&app.session, &e.command, &e.params),
     }
 }
 
-pub(crate) fn entry_enabled(app: &EffectcraftApp, e: &MenuEntry) -> bool {
+pub(crate) fn entry_enabled(app: &AuroraApp, e: &MenuEntry) -> bool {
     if app.ui.focused == PanelKind::Project {
         match e.command.as_str() {
             "edit.duplicate" => {
@@ -1270,8 +1267,8 @@ pub(crate) fn entry_enabled(app: &EffectcraftApp, e: &MenuEntry) -> bool {
 }
 
 /// Every menu entry, flattened with its submenu path.
-pub fn menu_items(app: &EffectcraftApp) -> Vec<MenuItem> {
-    effectcraft_engine::menus::entries()
+pub fn menu_items(app: &AuroraApp) -> Vec<MenuItem> {
+    aurora_engine::menus::entries()
         .into_iter()
         .map(|(path, e)| MenuItem {
             id: e.command.clone(),
@@ -1373,7 +1370,7 @@ fn shifted_alias(k: egui::Key) -> Option<egui::Key> {
 pub type Binding = (egui::Modifiers, egui::Key, String, Value);
 
 /// All bindings of the active keyboard shortcut preset, most modifiers first.
-pub fn bindings(session: &effectcraft_engine::Session) -> Vec<Binding> {
+pub fn bindings(session: &aurora_engine::Session) -> Vec<Binding> {
     let mut v: Vec<Binding> = Vec::new();
     for (sc, b) in session.shortcuts().bindings() {
         // Off macOS `Cmd` is Ctrl, so a Ctrl+Cmd shortcut (Enter Full Screen's Ctrl+Cmd+F) would
@@ -1405,7 +1402,7 @@ fn space_tap_id() -> egui::Id {
 }
 
 /// Dispatch keyboard shortcuts (skipped while typing in a text field).
-pub fn handle_shortcuts(app: &mut EffectcraftApp, ctx: &egui::Context) {
+pub fn handle_shortcuts(app: &mut AuroraApp, ctx: &egui::Context) {
     // Dialog cancellation owns Escape even when a text field has keyboard focus.
     if app.dialog.is_some() && ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
         if crate::panels::shortcut_editor::recording(app) || egui::Popup::is_any_open(ctx) {
@@ -1527,13 +1524,13 @@ pub fn handle_shortcuts(app: &mut EffectcraftApp, ctx: &egui::Context) {
 }
 
 /// Draw the in-window menu bar (the engine's AE menu tree).
-pub fn menu_bar(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
+pub fn menu_bar(app: &mut AuroraApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let mut clicked: Option<(String, Value)> = None;
     ui.horizontal_centered(|ui| {
         ui.add_space(6.0);
         egui::MenuBar::new().ui(ui, |ui| {
-            for node in effectcraft_engine::menus::menu_bar() {
+            for node in aurora_engine::menus::menu_bar() {
                 if let MenuNode::Submenu { label, children } = node {
                     let r = ui.menu_button(crate::i18n::label(app, "", label), |ui| {
                         ui.set_min_width(if label == "Effect" { 200.0 } else { 280.0 });
@@ -1553,17 +1550,17 @@ pub fn menu_bar(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
 
 /// The entries of top-level menu `name` (the Effect menu is the Effect Controls panel's context
 /// menu); returns the chosen command and its params.
-pub(crate) fn menu_contents(app: &mut EffectcraftApp, ui: &mut egui::Ui, name: &str) -> Option<(String, Value)> {
+pub(crate) fn menu_contents(app: &mut AuroraApp, ui: &mut egui::Ui, name: &str) -> Option<(String, Value)> {
     let mut clicked = None;
     if let Some(MenuNode::Submenu { children, .. }) =
-        effectcraft_engine::menus::menu_bar().iter().find(|n| matches!(n, MenuNode::Submenu { label, .. } if label == name))
+        aurora_engine::menus::menu_bar().iter().find(|n| matches!(n, MenuNode::Submenu { label, .. } if label == name))
     {
         menu_nodes(app, ui, children, &mut clicked);
     }
     clicked.map(|(id, params)| (id, if params.is_null() { json!({}) } else { params }))
 }
 
-fn menu_nodes(app: &mut EffectcraftApp, ui: &mut egui::Ui, nodes: &[MenuNode], clicked: &mut Option<(String, Value)>) {
+fn menu_nodes(app: &mut AuroraApp, ui: &mut egui::Ui, nodes: &[MenuNode], clicked: &mut Option<(String, Value)>) {
     for n in nodes {
         match n {
             MenuNode::Separator => {
@@ -1574,7 +1571,7 @@ fn menu_nodes(app: &mut EffectcraftApp, ui: &mut egui::Ui, nodes: &[MenuNode], c
                 // saved workspaces.
                 let ws = app.ui.workspace.clone();
                 let saved = app.saved_workspace_names();
-                let (entries, empty) = effectcraft_engine::menus::dynamic(&app.session, name, &dyn_ctx(&ws, &saved));
+                let (entries, empty) = aurora_engine::menus::dynamic(&app.session, name, &dyn_ctx(&ws, &saved));
                 if entries.is_empty()
                     && let Some(e) = empty
                 {
@@ -1601,7 +1598,7 @@ fn menu_nodes(app: &mut EffectcraftApp, ui: &mut egui::Ui, nodes: &[MenuNode], c
             }
             MenuNode::Submenu { label, children } => {
                 let ws = app.ui.workspace.clone();
-                let shown = crate::i18n::submenu(app, label, effectcraft_engine::menus::submenu_label(&app.session, label, &dyn_ctx(&ws, &[])));
+                let shown = crate::i18n::submenu(app, label, aurora_engine::menus::submenu_label(&app.session, label, &dyn_ctx(&ws, &[])));
                 ui.menu_button((gutter(false), shown.as_str()), |ui| {
                     ui.set_min_width(if children.len() > 30 { 200.0 } else { 240.0 });
                     // Long submenus (Blending Mode, effect categories) scroll instead of running
@@ -1623,8 +1620,8 @@ fn menu_nodes(app: &mut EffectcraftApp, ui: &mut egui::Ui, nodes: &[MenuNode], c
 }
 
 /// Frontend state for dynamic menus (the current workspace and the saved ones).
-pub(crate) fn dyn_ctx<'a>(workspace: &'a str, saved_workspaces: &'a [String]) -> effectcraft_engine::menus::DynCtx<'a> {
-    effectcraft_engine::menus::DynCtx { workspace: Some(workspace), saved_workspaces }
+pub(crate) fn dyn_ctx<'a>(workspace: &'a str, saved_workspaces: &'a [String]) -> aurora_engine::menus::DynCtx<'a> {
+    aurora_engine::menus::DynCtx { workspace: Some(workspace), saved_workspaces }
 }
 
 /// The check-mark column every menu row reserves (like macOS / After Effects menus).
@@ -1633,7 +1630,7 @@ fn gutter(checked: bool) -> egui::Atom<'static> {
     (if checked { "✔" } else { "" }).atom_size(egui::vec2(14.0, 14.0))
 }
 
-fn menu_entry(app: &EffectcraftApp, ui: &mut egui::Ui, e: &MenuEntry) -> bool {
+fn menu_entry(app: &AuroraApp, ui: &mut egui::Ui, e: &MenuEntry) -> bool {
     let label = entry_label(app, e);
     let mut b = egui::Button::new((gutter(entry_checked(app, e) == Some(true)), label));
     if let Some(s) = entry_shortcut(app, e) {
@@ -1653,7 +1650,7 @@ mod tests {
                 assert!(parse_shortcut(sc).is_some() || sc == "Num*", "{sc}");
             }
         }
-        for (_, e) in effectcraft_engine::menus::entries() {
+        for (_, e) in aurora_engine::menus::entries() {
             if let Some(sc) = &e.shortcut {
                 assert!(parse_shortcut(sc).is_some() || sc == "Num*", "{} ({sc})", e.label);
             }
@@ -1662,7 +1659,7 @@ mod tests {
 
     #[test]
     fn ui_and_menu_shortcuts_do_not_collide() {
-        let app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let app = AuroraApp::new(aurora_engine::Session::default());
         let mut seen: std::collections::BTreeMap<(String, String), (String, String)> = Default::default();
         for (m, k, id, params) in bindings(&app.session) {
             let key = (format!("{m:?}"), format!("{k:?}"));
@@ -1677,8 +1674,8 @@ mod tests {
 
     #[test]
     fn dispatch_uses_the_active_custom_preset() {
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
-        let find = |app: &EffectcraftApp, id: &str| bindings(&app.session).into_iter().filter(|b| b.2 == id).map(|b| (b.0, b.1)).collect::<Vec<_>>();
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
+        let find = |app: &AuroraApp, id: &str| bindings(&app.session).into_iter().filter(|b| b.2 == id).map(|b| (b.0, b.1)).collect::<Vec<_>>();
         let (m, k) = parse_shortcut("Cmd+Alt+Shift+Y").unwrap();
         assert!(find(&app, "layer.newNull").contains(&(m, k)));
         // A UI command rebound in a custom preset.
@@ -1692,13 +1689,13 @@ mod tests {
         let item = menu_items(&app).into_iter().find(|i| i.id == "layer.newNull").unwrap();
         assert_eq!(item.shortcut.as_deref(), Some("F6"));
         // Back to the default preset.
-        app.session.execute("shortcuts.preset", json!({"op": "select", "name": effectcraft_engine::shortcuts::DEFAULT_PRESET})).unwrap();
+        app.session.execute("shortcuts.preset", json!({"op": "select", "name": aurora_engine::shortcuts::DEFAULT_PRESET})).unwrap();
         assert!(find(&app, "layer.newNull").contains(&(m, k)));
     }
 
     #[test]
     fn renamed_label_shows_in_the_label_menu() {
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
         app.set_pref("labels.1.name", json!("Sunflower")).unwrap();
         let labels: Vec<String> = menu_items(&app).into_iter().filter(|i| i.id == "edit.label").map(|i| i.label).collect();
         assert!(labels.contains(&"Sunflower".to_string()), "{labels:?}");
@@ -1708,6 +1705,6 @@ mod tests {
     #[test]
     fn menu_items_cover_the_tree() {
         assert_eq!(menus().last(), Some(&"Help"));
-        assert!(effectcraft_engine::menus::entries().len() > 500);
+        assert!(aurora_engine::menus::entries().len() > 500);
     }
 }

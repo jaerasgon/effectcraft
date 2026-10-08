@@ -2,7 +2,7 @@
 //! Basic / Advanced / 3D Renderer tabs, Cancel / OK. Every control registers an automation id
 //! (`dialog.comp.<field>`).
 
-use effectcraft_engine::time::{FrameRate, format_timecode_frames, parse_timecode};
+use aurora_engine::time::{FrameRate, format_timecode_frames, parse_timecode};
 use egui::{Color32, vec2};
 use serde_json::json;
 

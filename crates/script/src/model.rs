@@ -2,12 +2,12 @@
 //! property nodes, values and keyframes as JSON shaped for the prelude. Every edit goes through
 //! engine commands instead (`__exec`), so it is undoable and journaled.
 
-use effectcraft_engine::Session;
-use effectcraft_engine::color::Label;
-use effectcraft_keyframe::{Interp, TextDoc, Value as KV};
-use effectcraft_project::{Comp, GroupKind, ItemId, ItemKind, Layer, LayerId, LayerSource, Node, ParamUi, PropGroup};
-use effectcraft_render::EvalCtx;
-use effectcraft_time::Tick;
+use aurora_engine::Session;
+use aurora_engine::color::Label;
+use aurora_keyframe::{Interp, TextDoc, Value as KV};
+use aurora_project::{Comp, GroupKind, ItemId, ItemKind, Layer, LayerId, LayerSource, Node, ParamUi, PropGroup};
+use aurora_render::EvalCtx;
+use aurora_time::Tick;
 use serde_json::{Value as J, json};
 
 use crate::matchnames;
@@ -48,7 +48,7 @@ pub fn query(s: &mut Session, kind: &str, a: &J) -> R {
         "menuCommandId" => Ok(menu_command_id(a.get("name").and_then(J::as_str).unwrap_or(""))),
         "commandAt" => {
             let i = u(a, "index").unwrap_or(0) as usize;
-            Ok(effectcraft_engine::command_specs().get(i.wrapping_sub(1)).map(|c| json!(c.id)).unwrap_or(J::Null))
+            Ok(aurora_engine::command_specs().get(i.wrapping_sub(1)).map(|c| json!(c.id)).unwrap_or(J::Null))
         }
         "exprError" => {
             let code = a.get("code").and_then(J::as_str).unwrap_or("");
@@ -59,7 +59,7 @@ pub fn query(s: &mut Session, kind: &str, a: &J) -> R {
         }
         "labels" => Ok(json!(Label::ALL.iter().map(|l| l.name()).collect::<Vec<_>>())),
         "effects" => Ok(json!(
-            effectcraft_engine::effects::all()
+            aurora_engine::effects::all()
                 .into_iter()
                 .map(|e| json!({"id": e.id, "name": e.name, "matchName": matchnames::effect(e.id), "category": e.category}))
                 .collect::<Vec<_>>()
@@ -82,7 +82,7 @@ fn project(s: &Session) -> J {
         "linearBlending": p.settings.blend_linear,
         "linearizeWorkingSpace": p.settings.linearize,
         "workingSpace": p.settings.working_space.map(|w| format!("{w:?}")).unwrap_or_default(),
-        "timeDisplayFrames": p.settings.time_display == effectcraft_project::TimeDisplayStyle::Frames,
+        "timeDisplayFrames": p.settings.time_display == aurora_project::TimeDisplayStyle::Frames,
         "renderQueue": p.render_queue.len(),
         "revision": s.revision,
     })
@@ -132,7 +132,7 @@ fn item(s: &Session, a: &J) -> R {
                         "motionBlurSamplesPerFrame": c.motion_blur_samples,
                         "motionBlurAdaptiveSampleLimit": c.motion_blur_adaptive_limit,
                         "preserveNestedFrameRate": c.preserve_frame_rate, "preserveNestedResolution": c.preserve_resolution,
-                        "renderer": match c.renderer { effectcraft_project::Renderer::Classic3D => "ADBE Classic 3D", effectcraft_project::Renderer::Advanced3D => "ADBE Advanced 3d" },
+                        "renderer": match c.renderer { aurora_project::Renderer::Classic3D => "ADBE Classic 3D", aurora_project::Renderer::Advanced3D => "ADBE Advanced 3d" },
                         "open": s.state.open_comps.contains(&cid), "active": s.active_comp_id() == Some(cid),
                         "hasVideo": true, "hasAudio": c.layers.iter().any(|l| l.switches.audio && matches!(l.source, LayerSource::Footage { .. } | LayerSource::Comp { .. })),
                         "posterTime": c.poster_time.seconds(),
@@ -149,12 +149,12 @@ fn item(s: &Session, a: &J) -> R {
             o["width"] = json!(fo.width);
             o["height"] = json!(fo.height);
             o["pixelAspect"] = json!(fo.pixel_aspect);
-            o["duration"] = json!(if fo.kind == effectcraft_project::FootageKind::Still { 0.0 } else { fo.duration.seconds() });
-            o["frameRate"] = json!(if fo.kind == effectcraft_project::FootageKind::Still { 0.0 } else { fo.frame_rate.as_f64() });
+            o["duration"] = json!(if fo.kind == aurora_project::FootageKind::Still { 0.0 } else { fo.duration.seconds() });
+            o["frameRate"] = json!(if fo.kind == aurora_project::FootageKind::Still { 0.0 } else { fo.frame_rate.as_f64() });
             o["hasVideo"] = json!(fo.has_video);
             o["hasAudio"] = json!(fo.has_audio);
             o["footageMissing"] = json!(fo.missing);
-            o["isStill"] = json!(fo.kind == effectcraft_project::FootageKind::Still);
+            o["isStill"] = json!(fo.kind == aurora_project::FootageKind::Still);
             o["loop"] = json!(fo.loop_count);
         }
         ItemKind::Solid(so) => {
@@ -182,7 +182,7 @@ fn layer(s: &Session, a: &J) -> R {
         LayerSource::Light { .. } => "light",
         _ => "av",
     };
-    let (w, h) = effectcraft_render::source_size(&s.project, l);
+    let (w, h) = aurora_render::source_size(&s.project, l);
     let t = s.time_of(cid);
     Ok(json!({
         "id": l.id.0,
@@ -237,7 +237,7 @@ fn chain(l: &Layer, uid: u64) -> Option<Vec<&Node>> {
 }
 
 /// PropertyValueType of a property.
-fn value_type(p: &effectcraft_project::Property) -> &'static str {
+fn value_type(p: &aurora_project::Property) -> &'static str {
     if matches!(p.ui, ParamUi::Mask) {
         return "MASK_INDEX";
     }
@@ -435,8 +435,8 @@ fn text_json(d: &TextDoc) -> J {
     let mut doc = serde_json::to_value(d).unwrap_or(J::Null);
     let st = d.style_at(0);
     if let Some(o) = doc.as_object_mut() {
-        o.insert("first".into(), effectcraft_keyframe::text_doc::char_style_json(&st));
-        o.insert("para".into(), effectcraft_keyframe::text_doc::para_style_json(&d.para(0)));
+        o.insert("first".into(), aurora_keyframe::text_doc::char_style_json(&st));
+        o.insert("para".into(), aurora_keyframe::text_doc::para_style_json(&d.para(0)));
     }
     doc
 }
@@ -471,7 +471,7 @@ fn keys(s: &Session, a: &J) -> R {
     let p = l.props.find(uid).ok_or("the property no longer exists (it was deleted)")?;
     let sel: Vec<Tick> = s.state.selected_keys.iter().filter(|k| k.layer == l.id && k.prop == uid).map(|k| k.time).collect();
     let _ = cid;
-    let ease = |e: &[effectcraft_keyframe::Ease], n: usize| -> J {
+    let ease = |e: &[aurora_keyframe::Ease], n: usize| -> J {
         let n = n.max(1);
         // Influence is stored as a fraction; scripts see percent.
         let mut v: Vec<J> = e.iter().map(|x| json!({"speed": x.speed, "influence": x.influence * 100.0})).collect();
@@ -531,7 +531,7 @@ fn textdoc(s: &Session, a: &J) -> R {
 
 fn markers(s: &Session, a: &J) -> R {
     let (_, c) = comp_of(s, a)?;
-    let (list, to_comp): (&[effectcraft_project::Marker], Option<&Layer>) = match u(a, "layer") {
+    let (list, to_comp): (&[aurora_project::Marker], Option<&Layer>) = match u(a, "layer") {
         Some(lid) => {
             let l = c.layer(LayerId(lid)).ok_or("the layer no longer exists")?;
             (&l.markers, Some(l))
@@ -561,18 +561,18 @@ fn source_rect(s: &Session, a: &J) -> R {
     ctx.expr = s.expr.as_deref();
     let r = match &l.source {
         LayerSource::Text => {
-            let paths: Vec<_> = effectcraft_render::text::glyph_paths(&ctx, l).into_iter().map(|(p, _)| p).collect();
-            effectcraft_path::bounds(&paths).map(|b| [b.y0, b.x0, b.width(), b.height()]).unwrap_or([0.0; 4])
+            let paths: Vec<_> = aurora_render::text::glyph_paths(&ctx, l).into_iter().map(|(p, _)| p).collect();
+            aurora_path::bounds(&paths).map(|b| [b.y0, b.x0, b.width(), b.height()]).unwrap_or([0.0; 4])
         }
         LayerSource::Shape => match l.props.sub("contents") {
             Some(contents) => {
-                let buf = effectcraft_render::shapes::render(&ctx, l, contents, 1.0);
+                let buf = aurora_render::shapes::render(&ctx, l, contents, 1.0);
                 if buf.img.width <= 4 { [0.0; 4] } else { [2.0 - buf.offset[1], 2.0 - buf.offset[0], buf.img.width as f64 - 4.0, buf.img.height as f64 - 4.0] }
             }
             None => [0.0; 4],
         },
         _ => {
-            let (w, h) = effectcraft_render::source_size(&s.project, l);
+            let (w, h) = aurora_render::source_size(&s.project, l);
             [0.0, 0.0, w as f64, h as f64]
         }
     };
@@ -589,7 +589,7 @@ fn resolve_add(s: &Session, a: &J) -> R {
     let in_group = l.props.sub("contents").is_some_and(|c| c.uid == g.uid || c.find_group(g.uid).is_some());
     Ok(match g.match_id.as_str() {
         "effects" => {
-            let id = matchnames::effect_from_match(name).map(str::to_string).or_else(|| effectcraft_engine::effects::lookup(name).map(|e| e.id.to_string()));
+            let id = matchnames::effect_from_match(name).map(str::to_string).or_else(|| aurora_engine::effects::lookup(name).map(|e| e.id.to_string()));
             match id {
                 Some(id) => json!({"kind": "effect", "effect": id}),
                 None => json!({"error": format!("Can not add a property with name \"{name}\" to this PropertyGroup (unknown effect)")}),
@@ -671,7 +671,7 @@ fn text_animator_property(name: &str) -> Option<&'static str> {
 fn menu_command_id(name: &str) -> J {
     let norm = |s: &str| s.trim().trim_end_matches("...").trim_end_matches('…').trim().to_ascii_lowercase();
     let n = norm(name);
-    let specs = effectcraft_engine::command_specs();
+    let specs = aurora_engine::command_specs();
     let pick = specs
         .iter()
         .position(|c| !c.menu.is_empty() && norm(c.label) == n)

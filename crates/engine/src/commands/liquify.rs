@@ -1,15 +1,15 @@
 //! Liquify brush strokes (`liquify.stroke`, `liquify.clear`).
 //!
 //! A stroke is appended to the layer's Liquify effect (added when the layer has none) as one
-//! line of its hidden Distortion Mesh data (see `effectcraft_effects::distort4`). Brush size,
+//! line of its hidden Distortion Mesh data (see `aurora_effects::distort4`). Brush size,
 //! pressure, turbulent jitter and clone offset default to the effect's own tool options. When
 //! the Distortion Mesh is animated, the stroke goes into a keyframe at the current time (copying
 //! the mesh in effect there), as After Effects records mesh keyframes.
 
-use effectcraft_effects::distort4::{LIQUIFY_TOOLS, LiquifyStroke, parse_strokes};
-use effectcraft_keyframe::{Keyframe, Value as KV};
-use effectcraft_project::build::Ids;
-use effectcraft_project::{GroupKind, PropGroup, Uid};
+use aurora_effects::distort4::{LIQUIFY_TOOLS, LiquifyStroke, parse_strokes};
+use aurora_keyframe::{Keyframe, Value as KV};
+use aurora_project::build::Ids;
+use aurora_project::{GroupKind, PropGroup, Uid};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, f_p, has_comp, layer_mut, layer_p, str_p};
@@ -28,8 +28,8 @@ fn liquify_effect(fx: &mut PropGroup, ids: &mut Ids, layer_size: [f64; 2], want:
     if let Some(g) = fx.groups().filter(|g| is_liquify(g)).last() {
         return Ok(g.uid);
     }
-    let spec = effectcraft_effects::find(ID).ok_or_else(|| EngineError::Other("Liquify effect missing".into()))?;
-    let g = effectcraft_effects::instantiate(spec, ids, "Liquify", layer_size);
+    let spec = aurora_effects::find(ID).ok_or_else(|| EngineError::Other("Liquify effect missing".into()))?;
+    let g = aurora_effects::instantiate(spec, ids, "Liquify", layer_size);
     let uid = g.uid;
     fx.children.push(g.into());
     Ok(uid)
@@ -66,7 +66,7 @@ fn stroke(s: &mut Session, p: &Value) -> Result<Value> {
         return Err(bad(cmd, "Liquify works on footage, solid, text, shape and precomp layers"));
     }
     let lt = layer.layer_time(t);
-    let (w, h) = effectcraft_render::source_size(&s.project, layer);
+    let (w, h) = aurora_render::source_size(&s.project, layer);
     let size = if w == 0 { [comp.width as f64, comp.height as f64] } else { [w as f64, h as f64] };
     let want = p.get("effect").and_then(Value::as_u64);
     let (fx_uid, count) = s.edit("Liquify Stroke", None, |proj, _st| {

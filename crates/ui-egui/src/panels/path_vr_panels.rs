@@ -15,9 +15,9 @@
 use egui::{Rect, RichText};
 use serde_json::{Value, json};
 
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 
-fn run(app: &mut EffectcraftApp, ctx: &egui::Context, actions: Vec<(&str, Value)>) {
+fn run(app: &mut AuroraApp, ctx: &egui::Context, actions: Vec<(&str, Value)>) {
     for (id, p) in actions {
         match crate::menus::invoke(app, ctx, id, p) {
             Ok(_) => {}
@@ -31,7 +31,7 @@ fn area(ui: &mut egui::Ui, rect: Rect) -> egui::Ui {
 }
 
 /// Window ▸ Create Nulls From Paths.
-pub fn create_nulls(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn create_nulls(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let mut ui = area(ui, rect);
@@ -60,7 +60,7 @@ pub fn create_nulls(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 }
 
 /// Window ▸ VR Comp Editor.
-pub fn vr_editor(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn vr_editor(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let mut ui = area(ui, rect);

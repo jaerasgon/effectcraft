@@ -9,7 +9,7 @@ use egui::{Color32, vec2};
 use serde_json::Value;
 
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 /// The deletion waiting on the prompt: its params and what it takes with it.
 #[derive(Clone, Debug, Default)]
@@ -25,7 +25,7 @@ fn plural(n: u64, one: &str, many: &str) -> String {
 
 /// Whether `id` needs the prompt first. When it does, the prompt opens holding the command and
 /// the caller must not run it (it runs once the user answers Delete).
-pub fn guard(app: &mut EffectcraftApp, id: &str, params: &Value) -> bool {
+pub fn guard(app: &mut AuroraApp, id: &str, params: &Value) -> bool {
     if id != "project.delete" || std::mem::take(&mut app.dialog_state.delete_items.answered) {
         return false;
     }
@@ -38,7 +38,7 @@ pub fn guard(app: &mut EffectcraftApp, id: &str, params: &Value) -> bool {
     true
 }
 
-pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn show(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let Some((params, usage)) = app.dialog_state.delete_items.command.clone() else {
         app.dialog = None;
         return;

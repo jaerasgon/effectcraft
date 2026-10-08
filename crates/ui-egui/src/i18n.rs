@@ -1,12 +1,12 @@
-//! Japanese menu labels for EffectCraft's own engine tree. Commands remain locale-independent.
+//! Japanese menu labels for Aurora's own engine tree. Commands remain locale-independent.
 //! A command plus its source label distinguishes parameterised entries (e.g. blend modes).
 //! Empty command keys identify submenus. Dynamic filenames, user names and effect plug-in names
 //! remain verbatim; this catalog only translates the fixed menu tree.
 
-use crate::EffectcraftApp;
-use effectcraft_engine::menus::MenuEntry;
+use crate::AuroraApp;
+use aurora_engine::menus::MenuEntry;
 
-pub(crate) fn japanese(app: &EffectcraftApp) -> bool {
+pub(crate) fn japanese(app: &AuroraApp) -> bool {
     match app.session.prefs.general.language.as_str() {
         "system" => system_language() == "ja",
         l => l == "ja",
@@ -14,7 +14,7 @@ pub(crate) fn japanese(app: &EffectcraftApp) -> bool {
 }
 
 /// Settings ▸ General ▸ Language ▸ Match System: the operating system's interface language
-/// where EffectCraft has it, else English (#229), as After Effects installs in the system's
+/// where Aurora has it, else English (#229), as After Effects installs in the system's
 /// language. The browser build stays in English: it has no Japanese font of its own.
 fn system_language() -> &'static str {
     #[cfg(not(target_arch = "wasm32"))]
@@ -26,7 +26,7 @@ fn system_language() -> &'static str {
     "en"
 }
 
-/// The language EffectCraft shows for a BCP 47 locale (`ja-JP` → `ja`).
+/// The language Aurora shows for a BCP 47 locale (`ja-JP` → `ja`).
 fn supported(locale: Option<&str>) -> &'static str {
     match locale.and_then(|l| l.split(['-', '_']).next()) {
         Some(l) if l.eq_ignore_ascii_case("ja") => "ja",
@@ -34,11 +34,11 @@ fn supported(locale: Option<&str>) -> &'static str {
     }
 }
 
-pub(crate) fn label<'a>(app: &EffectcraftApp, command: &str, source: &'a str) -> &'a str {
+pub(crate) fn label<'a>(app: &AuroraApp, command: &str, source: &'a str) -> &'a str {
     if japanese(app) { JAPANESE.iter().find(|(id, en, _)| *id == command && *en == source).map(|(_, _, ja)| *ja).unwrap_or(source) } else { source }
 }
 
-pub(crate) fn entry(app: &EffectcraftApp, e: &MenuEntry, shown: String) -> String {
+pub(crate) fn entry(app: &AuroraApp, e: &MenuEntry, shown: String) -> String {
     if !japanese(app) {
         return shown;
     }
@@ -60,7 +60,7 @@ pub(crate) fn entry(app: &EffectcraftApp, e: &MenuEntry, shown: String) -> Strin
     }
 }
 
-pub(crate) fn submenu(app: &EffectcraftApp, source: &str, shown: String) -> String {
+pub(crate) fn submenu(app: &AuroraApp, source: &str, shown: String) -> String {
     if japanese(app) {
         if source == "Assign Shortcut to Workspace" {
             if let Some(name) = shown.strip_prefix("Assign Shortcut to “").and_then(|s| s.strip_suffix("” Workspace")) {
@@ -76,8 +76,8 @@ pub(crate) fn submenu(app: &EffectcraftApp, source: &str, shown: String) -> Stri
 }
 
 const JAPANESE: &[(&str, &str, &str)] = &[
-    ("", "EffectCraft", "EffectCraft"),
-    ("app.about", "About EffectCraft...", "EffectCraftについて..."),
+    ("", "Aurora", "Aurora"),
+    ("app.about", "About Aurora...", "Auroraについて..."),
     ("", "Settings...", "設定..."),
     ("app.settings", "General...", "一般..."),
     ("app.settings", "Startup & Repair...", "起動と修復..."),
@@ -96,10 +96,10 @@ const JAPANESE: &[(&str, &str, &str)] = &[
     ("app.settings", "Video...", "ビデオ..."),
     ("app.settings", "3D...", "3D..."),
     ("app.settings", "Scripting & Expressions...", "スクリプトとエクスプレッション..."),
-    ("app.hide", "Hide EffectCraft", "EffectCraftを隠す"),
+    ("app.hide", "Hide Aurora", "Auroraを隠す"),
     ("app.hideOthers", "Hide Others", "ほかを隠す"),
     ("app.showAll", "Show All", "すべてを表示"),
-    ("app.quit", "Quit EffectCraft", "EffectCraftを終了"),
+    ("app.quit", "Quit Aurora", "Auroraを終了"),
     ("", "File", "ファイル"),
     ("", "New", "新規"),
     ("file.newProject", "New Project", "新規プロジェクト"),
@@ -676,29 +676,24 @@ const JAPANESE: &[(&str, &str, &str)] = &[
     ("window.panel", "Create Nulls From Paths", "パスからヌルを作成"),
     ("window.panel", "VR Comp Editor", "VRコンポジションエディター"),
     ("", "Help", "ヘルプ"),
-    ("help.docs", "EffectCraft Help...", "EffectCraftヘルプ..."),
+    ("help.docs", "Aurora Help...", "Auroraヘルプ..."),
     ("help.docs", "Scripting Help...", "スクリプトヘルプ..."),
     ("help.docs", "Expression Reference...", "エクスプレッションリファレンス..."),
     ("help.docs", "Effect Reference...", "エフェクトリファレンス..."),
     ("anim.browsePresets", "Animation Presets...", "アニメーションプリセット..."),
     ("app.keyboardShortcuts", "Keyboard Shortcuts...", "キーボードショートカット..."),
     ("help.inAppTutorials", "In-App Tutorials...", "アプリ内チュートリアル..."),
-    ("help.onlineTutorials", "Online Tutorials...", "オンラインチュートリアル..."),
     ("help.systemReport", "System Compatibility Report...", "システム互換性レポート..."),
     ("help.enableLogging", "Enable Logging", "ログ記録を有効化"),
     ("help.revealLogFile", "Reveal Logging File", "ログファイルを表示"),
-    ("help.discord", "Join the ArtCraft Discord...", "ArtCraft Discordに参加..."),
     ("help.reportIssue", "Provide Feedback...", "フィードバックを送信..."),
-    ("help.website", "ArtCraft Website", "ArtCraftウェブサイト"),
-    ("help.appPage", "EffectCraft Home Page", "EffectCraftホームページ"),
-    ("help.github", "EffectCraft on GitHub", "GitHubのEffectCraft"),
     ("file.openDemoProject", "Open Demo Project", "デモプロジェクトを開く"),
 ];
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use effectcraft_engine::menus::{MenuNode, TREE, parse};
+    use aurora_engine::menus::{MenuNode, TREE, parse};
     use serde_json::json;
     use std::collections::BTreeSet;
 
@@ -746,7 +741,7 @@ mod tests {
 
     #[test]
     fn language_changes_native_labels_without_changing_commands_or_parameters() {
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
         app.session.execute("prefs.set", json!({"key":"general.language", "value":"en"})).unwrap();
         let en = crate::native_menu::build(&app);
         let state = crate::native_menu::state_key(&app);
@@ -787,7 +782,7 @@ mod tests {
         ] {
             assert_eq!(supported(locale), language, "{locale:?}");
         }
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
         assert_eq!(app.session.prefs.general.language, "system", "the default");
         assert_eq!(japanese(&app), system_language() == "ja");
         app.session.execute("prefs.set", json!({"key":"general.language", "value":"ja"})).unwrap();
@@ -796,7 +791,7 @@ mod tests {
 
     #[test]
     fn general_settings_exposes_the_language_automation_id() {
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
         let ctx = egui::Context::default();
         let tokens = crate::theme::Tokens::for_kind(crate::theme::ThemeKind::Dark);
         crate::theme::install(&ctx, &tokens);

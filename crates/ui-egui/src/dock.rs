@@ -1032,10 +1032,6 @@ pub fn draw_group_chrome(ui: &mut egui::Ui, g: &Group, focused: PanelKind, t: &T
         }
         let ai = entries.iter().position(|e| e.active).unwrap_or(0);
         let strip = Rect::from_min_size(g.rect.min, vec2(g.rect.width(), t.tab_h));
-        if t.gradients {
-            // Settings ▸ Appearance ▸ Use Gradients.
-            crate::theme::gradient_rect(&painter, strip.shrink2(vec2(t.radius, 0.0)), t.grad_top(t.panel_bg), t.panel_bg);
-        }
         let activate = |e: &Entry| match e.doc {
             Some(id) => DockAction::ActivateDoc(e.panel, id),
             None => DockAction::Activate(e.panel),
@@ -1320,7 +1316,7 @@ mod tests {
         assert!(workspace("Color").contains(PanelKind::EffectControls));
         assert!(!workspace_floating("Undocked Panels").is_empty());
         // Every built-in workspace is in Window ▸ Workspace.
-        let menu: Vec<String> = effectcraft_engine::menus::entries()
+        let menu: Vec<String> = aurora_engine::menus::entries()
             .into_iter()
             .filter(|(_, e)| e.command == "window.workspace")
             .filter_map(|(_, e)| e.params.get("name").and_then(|v| v.as_str()).map(str::to_string))

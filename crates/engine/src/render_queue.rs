@@ -1,5 +1,5 @@
-//! Render Queue runtime: the [`Exporter`] hook (implemented by `effectcraft-export`, wired by
-//! `effectcraft-host`), output path resolution, and the render job that works through the queued
+//! Render Queue runtime: the [`Exporter`] hook (implemented by `aurora-export`, wired by
+//! `aurora-host`), output path resolution, and the render job that works through the queued
 //! items, in the background (desktop UI) or blocking (CLI, agents, tests).
 //!
 //! The queue itself (items, Render Settings, Output Modules, status) lives in the project
@@ -10,9 +10,9 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use effectcraft_project::render_queue::{OutputFormat, OutputModule, PostRenderAction, RenderQueueItem, RenderStatus, TemplateVars, expand_template};
-use effectcraft_project::{ItemId, ItemKind, LayerSource, Project};
-use effectcraft_render::{ExprHost, FootageSource};
+use aurora_project::render_queue::{OutputFormat, OutputModule, PostRenderAction, RenderQueueItem, RenderStatus, TemplateVars, expand_template};
+use aurora_project::{ItemId, ItemKind, LayerSource, Project};
+use aurora_render::{ExprHost, FootageSource};
 use serde::{Deserialize, Serialize};
 
 use crate::{Event, Session};
@@ -24,11 +24,11 @@ pub struct ExportJob<'a> {
     pub expr: Option<&'a dyn ExprHost>,
     pub item: &'a RenderQueueItem,
     /// GPU compositor to render with when the project's renderer is Mercury GPU Acceleration.
-    pub accel: Option<&'a dyn effectcraft_render::Accelerator>,
+    pub accel: Option<&'a dyn aurora_render::Accelerator>,
     /// Resolved output path (templates expanded except the `#` frame-number run).
     pub path: &'a str,
     /// Free-space hook (Use Storage Overflow).
-    pub storage: Option<&'a dyn effectcraft_project::render_queue::StorageQuota>,
+    pub storage: Option<&'a dyn aurora_project::render_queue::StorageQuota>,
     /// "#n Comp Name", for the render log.
     pub label: String,
     /// Settings ▸ General ▸ Switches Affect Nested Comps.
@@ -146,9 +146,9 @@ struct Work {
     project: Arc<Project>,
     footage: Arc<dyn FootageSource>,
     expr: Option<Arc<dyn ExprHost>>,
-    accel: Option<Arc<dyn effectcraft_render::Accelerator>>,
+    accel: Option<Arc<dyn aurora_render::Accelerator>>,
     exporter: Arc<dyn Exporter>,
-    storage: Option<Arc<dyn effectcraft_project::render_queue::StorageQuota>>,
+    storage: Option<Arc<dyn aurora_project::render_queue::StorageQuota>>,
     /// Per queue item: one (item with that output module, resolved path) per output module
     /// (and per segment, see [`Session::segments`]).
     items: Vec<Vec<(RenderQueueItem, String)>>,
@@ -158,8 +158,8 @@ struct Work {
 
 /// Bits per channel an output format writes for a project bit depth (named in the file when
 /// Settings ▸ Export ▸ Append Bit Depth to File Name is on).
-pub fn output_bits(format: OutputFormat, depth: effectcraft_project::BitDepth) -> u32 {
-    use effectcraft_project::BitDepth;
+pub fn output_bits(format: OutputFormat, depth: aurora_project::BitDepth) -> u32 {
+    use aurora_project::BitDepth;
     let project = match depth {
         BitDepth::Bpc8 => 8,
         BitDepth::Bpc16 => 16,
@@ -177,7 +177,7 @@ pub fn output_bits(format: OutputFormat, depth: effectcraft_project::BitDepth) -
 /// The bytes an output writes per frame, estimated from its data rate (H.264 bitrate, Apple's
 /// published ProRes target rates at 1080p29.97 scaled by frame size, typical rates otherwise).
 pub fn bytes_per_frame(om: &OutputModule, w: u32, h: u32, fps: f64) -> f64 {
-    use effectcraft_project::render_queue::ProResProfile::*;
+    use aurora_project::render_queue::ProResProfile::*;
     let fps = fps.max(1.0);
     let px = (w as f64 * h as f64) / (1920.0 * 1080.0);
     let mbps = |m: f64| m * 1_000_000.0 / 8.0;
@@ -377,7 +377,7 @@ impl Session {
             let n = per.min(frames - i);
             let mut m = item.clone();
             let (start, end) = (rate.tick_of(f0 + i as i64), rate.tick_of(f0 + (i + n) as i64));
-            m.settings.time_span = effectcraft_project::render_queue::TimeSpan::Custom { start, end };
+            m.settings.time_span = aurora_project::render_queue::TimeSpan::Custom { start, end };
             let seg = if fmt.is_sequence() {
                 let base = stem.trim_end_matches(['#', '[', ']', '_']).to_string();
                 let folder = dir.join(format!("{base}_{k:03}"));
@@ -488,13 +488,13 @@ impl Session {
         };
         let shared = Arc::new(JobShared::default());
         if wait {
-            effectcraft_render::passes::block_on(run_work(work, &shared, &mut |_| {}));
+            aurora_render::passes::block_on(run_work(work, &shared, &mut |_| {}));
             self.render_job = Some(RenderJob { shared, thread: None, remote: None });
         } else {
             let sh = shared.clone();
             let thread = std::thread::Builder::new()
                 .name("render-queue".into())
-                .spawn(move || effectcraft_render::passes::block_on(run_work(work, &sh, &mut |_| {})))
+                .spawn(move || aurora_render::passes::block_on(run_work(work, &sh, &mut |_| {})))
                 .map_err(|e| e.to_string())?;
             self.render_job = Some(RenderJob { shared, thread: Some(thread), remote: None });
         }
@@ -618,7 +618,7 @@ impl Session {
         let comp = item.comp;
         let label = if replace { "Pre-render: Import & Replace Usage" } else { "Post-Render: Import" };
         self.edit(label, None, |proj, st| {
-            let fid = proj.add_item(&name, effectcraft_color::Label::Aqua, None, ItemKind::Footage(footage));
+            let fid = proj.add_item(&name, aurora_color::Label::Aqua, None, ItemKind::Footage(footage));
             if replace {
                 let ids: Vec<ItemId> = proj.comps().map(|(i, _)| *i).filter(|i| *i != comp).collect();
                 for cid in ids {

@@ -16,9 +16,9 @@ pub mod ops;
 pub mod trace;
 pub mod varstroke;
 
-use effectcraft_geom::Mat3;
-use effectcraft_keyframe::ShapePath;
-use effectcraft_raster::Mask;
+use aurora_geom::Mat3;
+use aurora_keyframe::ShapePath;
+use aurora_raster::Mask;
 pub use kurbo::{BezPath, PathEl, Point};
 use kurbo::{Shape, Vec2 as KVec2};
 

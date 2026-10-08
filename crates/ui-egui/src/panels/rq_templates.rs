@@ -6,12 +6,12 @@
 //! `templates.default.<Slot>`, `templates.select`, `templates.duplicate`, `templates.delete`,
 //! `templates.newName`, `templates.saveFromItem`, `templates.ok`.
 
-use effectcraft_engine::project::render_templates::{RenderTemplates, TemplateKind, TemplateSlot};
+use aurora_engine::project::render_templates::{RenderTemplates, TemplateKind, TemplateSlot};
 use egui::{Color32, vec2};
 use serde_json::{Value, json};
 
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 #[derive(Clone, Default)]
 struct State {
@@ -25,7 +25,7 @@ fn state_id() -> egui::Id {
 }
 
 /// Open the dialog for `kind` (`renderSettings` | `outputModule`).
-pub fn open(app: &mut EffectcraftApp, ctx: &egui::Context, kind: &str) {
+pub fn open(app: &mut AuroraApp, ctx: &egui::Context, kind: &str) {
     let output = TemplateKind::parse(kind) == Some(TemplateKind::OutputModule);
     let t = &app.session.project.render_templates;
     let k = if output { TemplateKind::OutputModule } else { TemplateKind::RenderSettings };
@@ -38,7 +38,7 @@ fn names(t: &RenderTemplates, output: bool) -> Vec<String> {
     if output { t.output_module_list().into_iter().map(|m| m.name).collect() } else { t.render_settings_list().into_iter().map(|r| r.name).collect() }
 }
 
-pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn show(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut st: State = ctx.data(|d| d.get_temp(state_id())).unwrap_or_default();
     let kind = if st.output { "outputModule" } else { "renderSettings" };
     let k = if st.output { TemplateKind::OutputModule } else { TemplateKind::RenderSettings };

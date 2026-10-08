@@ -2,9 +2,9 @@
 //! First Vertex, Free Transform Points) and Layer ▸ Mask ▸ Motion Blur, Feather Falloff and Hide
 //! Locked Masks.
 
-use effectcraft_keyframe::{ShapePath, Value as KV};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{FeatherFalloff, GroupKind, ItemId, LayerId, LayerSource, MaskMotionBlur, Node, PropGroup, Uid};
+use aurora_keyframe::{ShapePath, Value as KV};
+use aurora_project::build::{self, Ids};
+use aurora_project::{FeatherFalloff, GroupKind, ItemId, LayerId, LayerSource, MaskMotionBlur, Node, PropGroup, Uid};
 use serde_json::{Value, json};
 
 use super::layer_menu::target_masks;

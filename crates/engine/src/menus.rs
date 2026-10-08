@@ -14,13 +14,13 @@
 //!   @effects                                  the effect categories (Effect menu)
 //!   @dynamic:history                          entries computed from the session when the menu
 //!                                             opens ([`dynamic`]: recent files, undo history…)
-//! [mac] Quit EffectCraft | app.quit           only on macOS ([!mac] = everywhere else)
+//! [mac] Quit Aurora | app.quit           only on macOS ([!mac] = everywhere else)
 //! ```
 //!
 //! An entry's shortcut is the command's default shortcut unless the line gives one (needed for
 //! entries with bound parameters). Adobe-service entries (Team Projects, Libraries, Bridge, Media
 //! Encoder, Behance, Creative Cloud…) are intentionally absent; the Essential Graphics workspace
-//! uses the Properties panel and the Essential Graphics panel, whose templates use EffectCraft's
+//! uses the Properties panel and the Essential Graphics panel, whose templates use Aurora's
 //! own open `.ectemplate` format.
 
 use std::sync::OnceLock;
@@ -246,14 +246,14 @@ pub fn entry_label(s: &Session, e: &MenuEntry) -> String {
             Some("footage") => {
                 let shown = s.state.footage_panel.as_ref().and_then(|f| s.project.item(f.item));
                 let f = shown.or_else(|| {
-                    s.state.project_selection.iter().filter_map(|i| s.project.item(*i)).find(|i| matches!(i.kind, effectcraft_project::ItemKind::Footage(_)))
+                    s.state.project_selection.iter().filter_map(|i| s.project.item(*i)).find(|i| matches!(i.kind, aurora_project::ItemKind::Footage(_)))
                 });
                 format!("Footage: {}", f.map(|i| i.name.clone()).unwrap_or_else(|| "(none)".into()))
             }
             _ => e.label.clone(),
         },
-        "edit.label" => match e.params.get("label").and_then(Value::as_str).and_then(effectcraft_color::Label::from_name) {
-            Some(l) if l != effectcraft_color::Label::None => s.prefs.label_name(l),
+        "edit.label" => match e.params.get("label").and_then(Value::as_str).and_then(aurora_color::Label::from_name) {
+            Some(l) if l != aurora_color::Label::None => s.prefs.label_name(l),
             _ => e.label.clone(),
         },
         _ => e.label.clone(),
@@ -271,7 +271,7 @@ pub fn checked(s: &Session, command: &str, params: &Value) -> Option<bool> {
     let pstr = |k: &str| params.get(k).and_then(Value::as_str);
     match command {
         "layer.setBlendMode" => {
-            let want = effectcraft_color::BlendMode::from_name(pstr("mode")?)?;
+            let want = aurora_color::BlendMode::from_name(pstr("mode")?)?;
             Some(layer?.blend_mode == want)
         }
         "layer.setSwitch" => {
@@ -294,22 +294,22 @@ pub fn checked(s: &Session, command: &str, params: &Value) -> Option<bool> {
             })
         }
         "layer.quality" => {
-            use effectcraft_project::Quality::*;
+            use aurora_project::Quality::*;
             let q = layer?.switches.quality;
             Some(matches!((pstr("quality")?, q), ("best", Best) | ("draft", Draft) | ("wireframe", Wireframe)))
         }
         "layer.sampling" => {
-            use effectcraft_project::Sampling::*;
+            use aurora_project::Sampling::*;
             let q = layer?.switches.sampling;
             Some(matches!((pstr("sampling")?, q), ("bilinear", Bilinear) | ("bicubic", Bicubic)))
         }
         "layer.frameBlending" => {
-            use effectcraft_project::FrameBlend::*;
+            use aurora_project::FrameBlend::*;
             let q = layer?.switches.frame_blend;
             Some(matches!((pstr("mode")?, q), ("off", Off) | ("frameMix", FrameMix) | ("pixelMotion", PixelMotion)))
         }
         "layer.trackMatte" => {
-            use effectcraft_project::MatteKind::*;
+            use aurora_project::MatteKind::*;
             let m = layer?.track_matte;
             Some(match (pstr("op")?, m) {
                 ("none", None) => true,
@@ -339,7 +339,7 @@ pub fn checked(s: &Session, command: &str, params: &Value) -> Option<bool> {
             })
         }
         "layer.mask.motionBlur" | "layer.mask.featherFalloff" | "path.rotoBezier" => {
-            use effectcraft_project::{FeatherFalloff, GroupKind, MaskMotionBlur};
+            use aurora_project::{FeatherFalloff, GroupKind, MaskMotionBlur};
             let GroupKind::Mask { motion_blur, feather_falloff, roto_bezier, .. } = layer?.masks()?.groups().next()?.kind else { return None };
             Some(match command {
                 "path.rotoBezier" => roto_bezier,
@@ -472,8 +472,8 @@ fn effect_categories() -> Vec<MenuNode> {
 
 /// The After Effects menu layout. Labels use "..." like AE's macOS menus.
 pub const TREE: &str = r#"
-[mac] EffectCraft
-  About EffectCraft... | app.about
+[mac] Aurora
+  About Aurora... | app.about
   ---
   Settings...
     General... | app.settings {"page":"general"} | Cmd+Alt+;
@@ -494,11 +494,11 @@ pub const TREE: &str = r#"
     3D... | app.settings {"page":"3d"}
     Scripting & Expressions... | app.settings {"page":"scripting"}
   ---
-  Hide EffectCraft | app.hide
+  Hide Aurora | app.hide
   Hide Others | app.hideOthers
   Show All | app.showAll
   ---
-  Quit EffectCraft | app.quit
+  Quit Aurora | app.quit
 File
   New
     New Project | file.newProject
@@ -1203,7 +1203,7 @@ Window
   VR Comp Editor | window.panel {"panel":"vrCompEditor"}
   @dynamic:scriptPanels
 Help
-  EffectCraft Help... | help.docs {"page":"help"} | F1
+  Aurora Help... | help.docs {"page":"help"} | F1
   Scripting Help... | help.docs {"page":"scripting"}
   Expression Reference... | help.docs {"page":"expressions"}
   Effect Reference... | help.docs {"page":"effects"}
@@ -1211,21 +1211,16 @@ Help
   Keyboard Shortcuts... | app.keyboardShortcuts
   ---
   In-App Tutorials... | help.inAppTutorials
-  Online Tutorials... | help.onlineTutorials
   ---
   System Compatibility Report... | help.systemReport
   Enable Logging | help.enableLogging
   Reveal Logging File | help.revealLogFile
   ---
-  Join the ArtCraft Discord... | help.discord
   Provide Feedback... | help.reportIssue
   ---
-  ArtCraft Website | help.website
-  EffectCraft Home Page | help.appPage
-  EffectCraft on GitHub | help.github
   Open Demo Project | file.openDemoProject
   [!mac] ---
-  [!mac] About EffectCraft... | app.about
+  [!mac] About Aurora... | app.about
 "#;
 
 #[cfg(test)]

@@ -1,14 +1,13 @@
 //! Modal dialogs: About (community links, Contributors and Models credits), New Composition /
 //! Composition Settings, Solid Settings and the command palette (Camera/Light Settings live in `dialogs_3d`).
 
-use effectcraft_engine::project::{ItemId, ItemKind, LayerId, LayerSource};
+use aurora_engine::project::{ItemId, ItemKind, LayerId, LayerSource};
 use egui::{Align2, Color32, Rect, Sense, pos2, vec2};
 use serde_json::{Value, json};
 
 pub use super::forms::{Field, form, info, open_form};
-use crate::icons::{self, Icon};
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 pub use super::comp_settings::CompDraft;
 
@@ -34,7 +33,7 @@ pub struct DialogState {
     /// Settings dialog page id (`general`, `appearance`…).
     pub settings_page: String,
     /// Settings when the dialog opened (Cancel restores them).
-    pub prefs_snapshot: Option<effectcraft_engine::prefs::Prefs>,
+    pub prefs_snapshot: Option<aurora_engine::prefs::Prefs>,
     /// Keyboard Shortcuts editor.
     pub shortcuts: super::shortcut_editor::EditorState,
     /// The open parameter form.
@@ -61,7 +60,7 @@ pub struct DialogState {
     pub delete_items: super::delete_items::Pending,
 }
 
-pub fn open_new_comp(app: &mut EffectcraftApp) {
+pub fn open_new_comp(app: &mut AuroraApp) {
     let n = app.session.project.comps().count() + 1;
     let last = app.dialog_state.last_new_comp.clone().unwrap_or_default();
     app.dialog_state.comp = CompDraft { name: format!("Comp {n}"), tab: super::comp_settings::Tab::Basic, start_tc: None, dur_tc: None, ..last };
@@ -69,7 +68,7 @@ pub fn open_new_comp(app: &mut EffectcraftApp) {
     app.dialog = Some(Dialog::NewComp);
 }
 
-pub fn open_comp_settings(app: &mut EffectcraftApp) -> Result<(), String> {
+pub fn open_comp_settings(app: &mut AuroraApp) -> Result<(), String> {
     let cid = app.session.active_comp_id().ok_or("no composition is open")?;
     let c = app.session.project.comp(cid).ok_or("no composition")?;
     app.dialog_state.comp = CompDraft {
@@ -87,7 +86,7 @@ pub fn open_comp_settings(app: &mut EffectcraftApp) -> Result<(), String> {
         adaptive_limit: c.motion_blur_adaptive_limit,
         preserve_frame_rate: c.preserve_frame_rate,
         preserve_resolution: c.preserve_resolution,
-        advanced_3d: c.renderer == effectcraft_engine::project::Renderer::Advanced3D,
+        advanced_3d: c.renderer == aurora_engine::project::Renderer::Advanced3D,
         ..Default::default()
     };
     app.dialog_state.editing_existing = true;
@@ -95,9 +94,9 @@ pub fn open_comp_settings(app: &mut EffectcraftApp) -> Result<(), String> {
     Ok(())
 }
 
-pub fn open_new_solid(app: &mut EffectcraftApp) -> Result<(), String> {
+pub fn open_new_solid(app: &mut AuroraApp) -> Result<(), String> {
     let c = app.session.active_comp().ok_or("no composition is open")?;
-    let n = app.session.project.items.values().filter(|i| matches!(i.kind, effectcraft_engine::project::ItemKind::Solid(_))).count() + 1;
+    let n = app.session.project.items.values().filter(|i| matches!(i.kind, aurora_engine::project::ItemKind::Solid(_))).count() + 1;
     let d = &mut app.dialog_state;
     d.solid_name = format!("Solid {n}");
     d.solid_size = [c.width, c.height];
@@ -111,7 +110,7 @@ pub fn open_new_solid(app: &mut EffectcraftApp) -> Result<(), String> {
 }
 
 /// Layer ▸ Layer Settings on a solid or adjustment layer: Solid Settings on its solid.
-fn open_solid_settings(app: &mut EffectcraftApp, layer: u64, item: ItemId) -> Result<(), String> {
+fn open_solid_settings(app: &mut AuroraApp, layer: u64, item: ItemId) -> Result<(), String> {
     let s = &app.session;
     let it = s.project.item(item).ok_or("the layer's solid is missing")?;
     let ItemKind::Solid(so) = &it.kind else { return Err("not a solid".into()) };
@@ -127,7 +126,7 @@ fn open_solid_settings(app: &mut EffectcraftApp, layer: u64, item: ItemId) -> Re
 /// Layer ▸ Layer Settings without parameters: Solid Settings for solids and adjustment layers,
 /// the layer's name for nulls (cameras and lights: `dialogs_3d::route`). Returns true when a
 /// dialog opened.
-pub fn route_layer_settings(app: &mut EffectcraftApp, id: &str, params: &Value) -> Result<bool, String> {
+pub fn route_layer_settings(app: &mut AuroraApp, id: &str, params: &Value) -> Result<bool, String> {
     if id != "layer.settings" || !params.as_object().is_none_or(|m| m.keys().all(|k| k == "layer")) {
         return Ok(false);
     }
@@ -163,7 +162,7 @@ pub(crate) fn modal(ctx: &egui::Context, title: &str, size: egui::Vec2, t: &Toke
         });
 }
 
-pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context) {
+pub fn show(app: &mut AuroraApp, ctx: &egui::Context) {
     let Some(d) = app.dialog else { return };
     let t = app.tokens;
     match d {
@@ -199,11 +198,10 @@ const ABOUT_TABS: [(&str, &str); 3] = [("About", "about"), ("Contributors", "con
 /// Height of the Contributors / Models tab bodies (they scroll inside it).
 const CREDITS_HEIGHT: f32 = 380.0;
 
-fn about(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+fn about(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut close = false;
-    let mut cmd: Option<&str> = None;
     let tab_id = egui::Id::new("about_tab");
-    modal(ctx, "About EffectCraft", vec2(680.0, 520.0), t, |ui| {
+    modal(ctx, "About Aurora", vec2(680.0, 520.0), t, |ui| {
         let mut tab = ui.data_mut(|d| d.get_temp::<usize>(tab_id)).unwrap_or(0);
         ui.horizontal(|ui| {
             for (i, (label, id)) in ABOUT_TABS.iter().enumerate() {
@@ -228,7 +226,7 @@ fn about(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
                     }
                 });
             }
-            _ => about_main(app, ui, t, &mut cmd),
+            _ => about_main(ui, t),
         }
         ui.add_space(8.0);
         ui.horizontal(|ui| {
@@ -242,21 +240,18 @@ fn about(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
             });
         });
     });
-    if let Some(c) = cmd {
-        let _ = app.session.execute(c, json!({}));
-    }
     if close {
         app.dialog = None;
     }
 }
 
-/// The About tab: logo, version, blurb and community links.
-fn about_main(app: &mut EffectcraftApp, ui: &mut egui::Ui, t: &Tokens, cmd: &mut Option<&'static str>) {
+/// The About tab: logo, version and blurb.
+fn about_main(ui: &mut egui::Ui, t: &Tokens) {
     let (r, _) = ui.allocate_exact_size(vec2(ui.available_width(), 96.0), Sense::hover());
     let p = ui.painter();
     p.rect_filled(r, 10.0, Color32::from_rgb(0x1b, 0x22, 0x3c));
     crate::header::paint_logo(p, Rect::from_min_size(r.min + vec2(18.0, 20.0), vec2(56.0, 56.0)));
-    p.text(r.min + vec2(90.0, 34.0), Align2::LEFT_CENTER, "EffectCraft", Tokens::semibold(24.0), Color32::WHITE);
+    p.text(r.min + vec2(90.0, 34.0), Align2::LEFT_CENTER, "Aurora", Tokens::semibold(24.0), Color32::WHITE);
     p.text(
         r.min + vec2(90.0, 62.0),
         Align2::LEFT_CENTER,
@@ -265,48 +260,10 @@ fn about_main(app: &mut EffectcraftApp, ui: &mut egui::Ui, t: &Tokens, cmd: &mut
         t.text_dim,
     );
     ui.add_space(12.0);
-    ui.label("A clean-room, open-source compositor for motion graphics and visual effects: native on macOS, Windows and Linux, and in the browser. Part of the ArtCraft family of creative apps.");
-    ui.add_space(14.0);
-    let links: [(Icon, &str, &str, &'static str); 4] = [
-        (Icon::Chat, "Join the ArtCraft Discord", effectcraft_engine::links::DISCORD, "help.discord"),
-        (Icon::Globe, "ArtCraft website", effectcraft_engine::links::WEBSITE, "help.website"),
-        (Icon::Sparkle, "EffectCraft home page", effectcraft_engine::links::APP_PAGE, "help.appPage"),
-        (Icon::Code, "Source code on GitHub", effectcraft_engine::links::GITHUB, "help.github"),
-    ];
-    for (icon, label, url, c) in links {
-        let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::click());
-        let p = ui.painter();
-        let discord = c == "help.discord";
-        p.rect_filled(
-            r,
-            6.0,
-            if discord {
-                Color32::from_rgb(0x58, 0x65, 0xf2)
-            } else if resp.hovered() {
-                t.hover
-            } else {
-                t.field_bg
-            },
-        );
-        let foreground = if discord { Color32::WHITE } else { t.text };
-        icons::paint(p, Rect::from_center_size(pos2(r.min.x + 18.0, r.center().y), vec2(15.0, 15.0)), icon, foreground);
-        p.text(pos2(r.min.x + 36.0, r.center().y), Align2::LEFT_CENTER, label, Tokens::medium(12.5), foreground);
-        p.text(
-            pos2(r.max.x - 12.0, r.center().y),
-            Align2::RIGHT_CENTER,
-            url,
-            Tokens::ui(11.0),
-            if discord { Color32::from_white_alpha(200) } else { t.text_dim },
-        );
-        app.auto.add(&format!("about.{c}"), r, label);
-        if resp.clicked() {
-            *cmd = Some(c);
-        }
-        ui.add_space(4.0);
-    }
+    ui.label("A clean-room, open-source compositor for motion graphics and visual effects: native on macOS, Windows and Linux, and in the browser.");
 }
 
-fn comp_settings(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens, existing: bool) {
+fn comp_settings(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens, existing: bool) {
     let mut d = app.dialog_state.comp.clone();
     let mut result = None;
     modal(ctx, "Composition Settings", vec2(600.0, 470.0), t, |ui| {
@@ -337,7 +294,7 @@ pub(crate) fn ui_enter(ctx: &egui::Context) -> bool {
 }
 
 /// Solid Settings: a new solid (Layer ▸ New ▸ Solid…) or the layer's solid (Layer Settings).
-fn solid(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+fn solid(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let (mut close, mut ok) = (false, false);
     let ds = &app.dialog_state;
     let (mut name, mut color, mut size, mut par, mut affect_all) =
@@ -466,7 +423,7 @@ fn solid_params(d: &DialogState) -> Value {
 }
 
 /// ⌘⇧P: fuzzy search over every command (engine + UI) and effect.
-fn palette(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+fn palette(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let mut q = app.dialog_state.palette_query.clone();
     let mut run: Option<(String, serde_json::Value)> = None;
     let mut close = false;
@@ -476,7 +433,7 @@ fn palette(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
             .filter(|m| m.enabled)
             .map(|m| (m.path.join(" ▸ ") + " ▸ " + &m.label, m.id, if m.params.is_null() { json!({}) } else { m.params }, m.shortcut.unwrap_or_default()))
             .collect();
-        for c in effectcraft_engine::command_specs().iter().filter(|c| c.menu.is_empty() && c.journal && c.params == "{}") {
+        for c in aurora_engine::command_specs().iter().filter(|c| c.menu.is_empty() && c.journal && c.params == "{}") {
             if app.session.is_enabled(c.id) {
                 v.push((c.label.to_string(), c.id.to_string(), json!({}), c.shortcut.unwrap_or("").to_string()));
             }
@@ -545,15 +502,15 @@ fn palette(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
 mod tests {
     use super::*;
 
-    fn app() -> (EffectcraftApp, egui::Context) {
+    fn app() -> (AuroraApp, egui::Context) {
         let ctx = egui::Context::default();
-        let mut app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let mut app = AuroraApp::new(aurora_engine::Session::default());
         crate::theme::install(&ctx, &app.tokens);
         app.session.execute("comp.new", json!({"name": "Main", "width": 640, "height": 360})).unwrap();
         (app, ctx)
     }
 
-    fn frame(app: &mut EffectcraftApp, ctx: &egui::Context) {
+    fn frame(app: &mut AuroraApp, ctx: &egui::Context) {
         let mut out = ctx.run_ui(Default::default(), |ui| {
             app.auto.begin_frame();
             show(app, ui.ctx());
@@ -561,7 +518,7 @@ mod tests {
         out.textures_delta.clear();
     }
 
-    fn solid_item(app: &EffectcraftApp, l: u64) -> ItemId {
+    fn solid_item(app: &AuroraApp, l: u64) -> ItemId {
         match app.session.active_comp().unwrap().layer(LayerId(l)).unwrap().source {
             LayerSource::Solid { item } => item,
             _ => panic!("not a solid"),

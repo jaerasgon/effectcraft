@@ -1,5 +1,5 @@
-use effectcraft_keyframe::{Keyframe, ShapePath, Value};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_keyframe::{Keyframe, ShapePath, Value};
+use aurora_time::{FrameRate, Tick};
 
 use crate::build::{self, Ids};
 use crate::{Comp, ItemKind, LayerSource, MaskMode, Project, Solid};
@@ -7,10 +7,10 @@ use crate::{Comp, ItemKind, LayerSource, MaskMode, Project, Solid};
 fn project_with_layer() -> (Project, crate::ItemId) {
     let mut p = Project::default();
     let comp = Comp::new(1920, 1080, FrameRate::FPS_29_97, Tick::from_seconds_f64(10.0));
-    let cid = p.add_item("Main", effectcraft_color::Label::Sandstone, None, ItemKind::Comp(comp.clone().into()));
+    let cid = p.add_item("Main", aurora_color::Label::Sandstone, None, ItemKind::Comp(comp.clone().into()));
     let sid = p.add_item(
         "Red Solid",
-        effectcraft_color::Label::Red,
+        aurora_color::Label::Red,
         None,
         ItemKind::Solid(Solid { color: [1.0, 0.0, 0.0], width: 1920, height: 1080, pixel_aspect: 1.0 }),
     );

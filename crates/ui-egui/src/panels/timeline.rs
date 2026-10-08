@@ -6,17 +6,17 @@
 //! keyframe navigator, scrubbable values). Right: time navigator, ruler with work area and cache
 //! bar, layer duration bars, keyframes, the CTI, and the value graph editor.
 
-use effectcraft_engine::color::BlendMode;
-use effectcraft_engine::keyframe::{Interp, Value};
-use effectcraft_engine::project::{Comp, GroupKind, Layer, LayerId, LayerSource, MatteKind, Node, ParamUi, PropGroup, Property};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::time::Tick;
+use aurora_engine::color::BlendMode;
+use aurora_engine::keyframe::{Interp, Value};
+use aurora_engine::project::{Comp, GroupKind, Layer, LayerId, LayerSource, MatteKind, Node, ParamUi, PropGroup, Property};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::time::Tick;
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
 use crate::icons::{self, Icon};
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 #[derive(Clone, Debug)]
 enum RowKind {
@@ -54,7 +54,7 @@ const GEOM_BIT: u64 = 1 << 59;
 /// Classic 3D comps don't extrude: a 3D text or shape layer's Geometry Options row offers to
 /// change the renderer instead, as in After Effects.
 fn classic_geometry_row(comp: &Comp, l: &Layer) -> bool {
-    comp.renderer == effectcraft_engine::project::Renderer::Classic3D && l.is_3d() && matches!(l.source, LayerSource::Text | LayerSource::Shape)
+    comp.renderer == aurora_engine::project::Renderer::Classic3D && l.is_3d() && matches!(l.source, LayerSource::Text | LayerSource::Shape)
 }
 
 /// Time navigator's visible-span bar and the work area bar.
@@ -374,7 +374,7 @@ fn set_zoom(tl: &mut crate::state::TimelineState, comp: &Comp, pps: f64, fit: f6
 }
 
 /// `;`: from the whole comp, zoom in to frame level around the CTI; otherwise show the whole comp.
-pub fn toggle_frame_zoom(app: &mut EffectcraftApp, ctx: &egui::Context) {
+pub fn toggle_frame_zoom(app: &mut AuroraApp, ctx: &egui::Context) {
     let Some((_, w)) = ctx.data(|d| d.get_temp::<(f32, f32)>(egui::Id::new("timeline-graph-area"))) else { return };
     let Some(comp) = app.session.active_comp_arc() else { return };
     let fit = fit_pps(w, &comp);
@@ -387,7 +387,7 @@ pub fn toggle_frame_zoom(app: &mut EffectcraftApp, ctx: &egui::Context) {
 }
 
 /// Zoom the time ruler around the CTI.
-pub fn zoom(app: &mut EffectcraftApp, ctx: &egui::Context, k: f64) {
+pub fn zoom(app: &mut AuroraApp, ctx: &egui::Context, k: f64) {
     let Some((_, w)) = ctx.data(|d| d.get_temp::<(f32, f32)>(egui::Id::new("timeline-graph-area"))) else { return };
     let Some(comp) = app.session.active_comp_arc() else { return };
     let fit = fit_pps(w, &comp);
@@ -398,7 +398,7 @@ pub fn zoom(app: &mut EffectcraftApp, ctx: &egui::Context, k: f64) {
 }
 
 /// Screen point of a layer bar (centre, or at a comp time).
-pub fn locate(app: &EffectcraftApp, layer: u64, time: Option<f64>) -> Option<(f32, f32)> {
+pub fn locate(app: &AuroraApp, layer: u64, time: Option<f64>) -> Option<(f32, f32)> {
     let e = app.auto.find(&format!("timeline.layer.{layer}.bar"))?;
     let y = e.rect[1] + e.rect[3] / 2.0;
     match time {
@@ -413,7 +413,7 @@ pub fn locate(app: &EffectcraftApp, layer: u64, time: Option<f64>) -> Option<(f3
 }
 
 /// Start renaming the first selected layer (Enter in the Timeline).
-pub fn begin_rename(app: &mut EffectcraftApp, ctx: &egui::Context) {
+pub fn begin_rename(app: &mut AuroraApp, ctx: &egui::Context) {
     if let Some(l) = app.session.state.selected_layers.first().and_then(|id| app.session.active_comp().and_then(|c| c.layer(*id))) {
         start_rename(ctx, l.id.0, &l.name);
     }
@@ -459,7 +459,7 @@ fn prop_visible(p: &Property, layer: &Layer) -> bool {
         return false;
     }
     // One-node cameras (and lights with auto-orient off) have no Point of Interest.
-    if p.match_id == "poi" && (layer.is_camera() || layer.is_light()) && layer.auto_orient != effectcraft_engine::project::AutoOrient::TowardsPointOfInterest {
+    if p.match_id == "poi" && (layer.is_camera() || layer.is_light()) && layer.auto_orient != aurora_engine::project::AutoOrient::TowardsPointOfInterest {
         return false;
     }
     // Separate Dimensions: X/Y/Z Position replace Position.
@@ -478,7 +478,7 @@ fn reveal_matches(p: &Property, path_matches: &[&str], kind: &str) -> bool {
 }
 
 /// The name shown for a layer: its name, or its source's name (Source Name column).
-fn display_name(app: &EffectcraftApp, l: &Layer) -> String {
+fn display_name(app: &AuroraApp, l: &Layer) -> String {
     if app.ui.timeline.source_name
         && let Some(item) = l.source.item().and_then(|i| app.session.project.item(i))
     {
@@ -493,8 +493,7 @@ fn display_name(app: &EffectcraftApp, l: &Layer) -> String {
 fn search_rows(l: &Layer, q: &str) -> Vec<Row> {
     fn group_row(l: &Layer, g: &PropGroup, depth: usize, parent: &PropGroup) -> Row {
         let fx = matches!(g.kind, GroupKind::Effect { .. }).then_some(g.enabled);
-        let eye =
-            (parent.match_id == effectcraft_engine::project::styles::GROUP && g.match_id != effectcraft_engine::project::styles::BLENDING).then_some(g.enabled);
+        let eye = (parent.match_id == aurora_engine::project::styles::GROUP && g.match_id != aurora_engine::project::styles::BLENDING).then_some(g.enabled);
         Row { layer: l.id, depth, kind: RowKind::Group { uid: g.uid, name: g.name.clone(), open: true, has_children: !g.children.is_empty(), fx, eye } }
     }
     fn all(l: &Layer, g: &PropGroup, depth: usize, out: &mut Vec<Row>) {
@@ -558,7 +557,7 @@ fn reveal_targets(kind: &str) -> Option<(&'static str, &'static [&'static str])>
 
 /// The properties the Timeline shows (revealed rows), as `{layer, prop}`: J / K and Select All
 /// Keyframes act on these, as in After Effects.
-pub(crate) fn visible_props(app: &EffectcraftApp, comp: &Comp) -> Vec<serde_json::Value> {
+pub(crate) fn visible_props(app: &AuroraApp, comp: &Comp) -> Vec<serde_json::Value> {
     build_rows(app, comp)
         .iter()
         .filter_map(|r| match r.kind {
@@ -568,7 +567,7 @@ pub(crate) fn visible_props(app: &EffectcraftApp, comp: &Comp) -> Vec<serde_json
         .collect()
 }
 
-fn build_rows(app: &EffectcraftApp, comp: &Comp) -> Vec<Row> {
+fn build_rows(app: &AuroraApp, comp: &Comp) -> Vec<Row> {
     let tl = &app.ui.timeline;
     let search = tl.search.trim().to_lowercase();
     let mut rows = Vec::new();
@@ -591,11 +590,11 @@ fn build_rows(app: &EffectcraftApp, comp: &Comp) -> Vec<Row> {
         if app.session.state.essential_solo {
             let mut v = vec![];
             for (i, c) in l.props.children.iter().enumerate() {
-                if c.match_id() == effectcraft_engine::project::essential::GROUP {
+                if c.match_id() == aurora_engine::project::essential::GROUP {
                     continue;
                 }
                 let g = PropGroup { children: vec![l.props.children[i].clone()], ..PropGroup::new(0, "", "") };
-                collect_props(&g, &mut v, &|p| prop_visible(p, l) && effectcraft_engine::project::essential::control_type(p).is_some());
+                collect_props(&g, &mut v, &|p| prop_visible(p, l) && aurora_engine::project::essential::control_type(p).is_some());
             }
             rows.extend(v.into_iter().map(|uid| Row { layer: l.id, depth: 1, kind: RowKind::Prop { uid } }));
             continue;
@@ -623,7 +622,7 @@ fn build_rows(app: &EffectcraftApp, comp: &Comp) -> Vec<Row> {
                             open,
                             has_children: !g.children.is_empty(),
                             fx: None,
-                            eye: (g.match_id == effectcraft_engine::project::styles::GROUP).then_some(g.enabled),
+                            eye: (g.match_id == aurora_engine::project::styles::GROUP).then_some(g.enabled),
                         },
                     });
                     if open {
@@ -670,7 +669,7 @@ fn build_rows(app: &EffectcraftApp, comp: &Comp) -> Vec<Row> {
 /// Rows of a twirled-open layer under the reveal shortcuts (one, or several added with Shift):
 /// masks, effects, the revealed properties in property-tree order, the Reveal Properties
 /// selection, then the waveform.
-fn reveal_rows(app: &EffectcraftApp, l: &Layer, kinds: &[String], rows: &mut Vec<Row>) {
+fn reveal_rows(app: &AuroraApp, l: &Layer, kinds: &[String], rows: &mut Vec<Row>) {
     let tl = &app.ui.timeline;
     let has = |k: &str| kinds.iter().any(|r| r == k);
     let group_rows = |rows: &mut Vec<Row>, g: &PropGroup, fx: bool| {
@@ -705,7 +704,7 @@ fn reveal_rows(app: &EffectcraftApp, l: &Layer, kinds: &[String], rows: &mut Vec
     // PP: paint, Roto Brush and Puppet effects; FF: effects whose plug-in is missing.
     for (k, keep) in [
         ("paint", &(|id: &str| matches!(id, "ec.paint.paint" | "ec.matte.rotobrush" | "ec.distort.puppet")) as &dyn Fn(&str) -> bool),
-        ("missingEffects", &|id: &str| effectcraft_engine::effects::find(id).is_none()),
+        ("missingEffects", &|id: &str| aurora_engine::effects::find(id).is_none()),
     ] {
         if has(k)
             && let Some(fx) = l.effects()
@@ -804,8 +803,8 @@ fn push_group(rows: &mut Vec<Row>, l: &Layer, g: &PropGroup, depth: usize, open:
                 let o = open.contains(&sg.uid);
                 let fx = matches!(sg.kind, GroupKind::Effect { .. }).then_some(sg.enabled);
                 // Layer style groups have eye switches (not Blending Options).
-                let eye = (g.match_id == effectcraft_engine::project::styles::GROUP && sg.match_id != effectcraft_engine::project::styles::BLENDING)
-                    .then_some(sg.enabled);
+                let eye =
+                    (g.match_id == aurora_engine::project::styles::GROUP && sg.match_id != aurora_engine::project::styles::BLENDING).then_some(sg.enabled);
                 rows.push(Row {
                     layer: l.id,
                     depth,
@@ -821,7 +820,7 @@ fn push_group(rows: &mut Vec<Row>, l: &Layer, g: &PropGroup, depth: usize, open:
     }
 }
 
-fn layer_icon(l: &Layer, project: &effectcraft_engine::project::Project) -> Icon {
+fn layer_icon(l: &Layer, project: &aurora_engine::project::Project) -> Icon {
     match &l.source {
         LayerSource::Text => Icon::TextLayer,
         LayerSource::Shape => Icon::ShapeLayer,
@@ -929,7 +928,7 @@ fn layer_drop_id() -> egui::Id {
     egui::Id::new("tl-layer-drop")
 }
 
-pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let Some(cid) = app.session.active_comp_id() else {
@@ -1402,8 +1401,8 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                     let lresp = ui.interact(lr, egui::Id::new(("label", layer.id.0)), Sense::click());
                     app.auto.add(&format!("timeline.layer.{}.label", layer.id.0), lr, layer.label.name());
                     lresp.context_menu(|ui| {
-                        for lab in effectcraft_engine::color::Label::ALL {
-                            let name = if lab == effectcraft_engine::color::Label::None { lab.name().to_string() } else { app.session.prefs.label_name(lab) };
+                        for lab in aurora_engine::color::Label::ALL {
+                            let name = if lab == aurora_engine::color::Label::None { lab.name().to_string() } else { app.session.prefs.label_name(lab) };
                             if ui.button(name).clicked() {
                                 actions.push(("edit.label".into(), json!({"layers": [layer.id.0], "label": lab.name()})));
                                 ui.close();
@@ -1516,11 +1515,11 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 let sws: [(Icon, bool, &str, bool); 8] = [
                     (Icon::Shy, sw.shy, "shy", true),
                     (Icon::Collapse, sw.collapse, "collapse", matches!(layer.source, LayerSource::Comp { .. } | LayerSource::Shape | LayerSource::Text)),
-                    (Icon::Quality, sw.quality == effectcraft_engine::project::Quality::Best, "quality", layer.source.is_av()),
+                    (Icon::Quality, sw.quality == aurora_engine::project::Quality::Best, "quality", layer.source.is_av()),
                     (Icon::Fx, sw.effects, "fx", layer.effects().is_some_and(|f| !f.children.is_empty())),
                     (
                         Icon::FrameBlend,
-                        sw.frame_blend != effectcraft_engine::project::FrameBlend::Off,
+                        sw.frame_blend != aurora_engine::project::FrameBlend::Off,
                         "frameBlend",
                         matches!(layer.source, LayerSource::Footage { .. } | LayerSource::Comp { .. }),
                     ),
@@ -1801,7 +1800,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                     if widgets::dropdown(ui, mr, mode.label(), &t, egui::Id::new(("mm", uid))).clicked() {
                         widgets::open_popup(ui, pop);
                     }
-                    let opts: Vec<String> = effectcraft_engine::project::MaskMode::ALL.iter().map(|m| m.label().to_string()).collect();
+                    let opts: Vec<String> = aurora_engine::project::MaskMode::ALL.iter().map(|m| m.label().to_string()).collect();
                     if let Some(i) = widgets::popup_menu(ui, pop, mr.left_bottom(), &opts, None) {
                         actions.push(("layer.setMask".into(), json!({"layer": layer.id.0, "mask": uid, "mode": opts[i]})));
                     }
@@ -1835,7 +1834,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 let wr = Rect::from_min_max(pos2(graph_x0, r.min.y), r.max);
                 gp.rect_filled(wr, 0.0, t.tl_bg);
                 app.auto.add(&format!("timeline.layer.{}.waveform", layer.id.0), wr, "Waveform");
-                match super::waveform::summary(app, &ctx, effectcraft_engine::project::ItemId(*item)) {
+                match super::waveform::summary(app, &ctx, aurora_engine::project::ItemId(*item)) {
                     Some(s) => super::waveform::draw(&gp, wr.shrink2(vec2(0.0, 2.0)), &tm, layer, &s, Color32::from_rgb(0x5f, 0xc8, 0x8a)),
                     None => {
                         gp.text(
@@ -1895,7 +1894,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 app.auto.add(&format!("timeline.prop.{uid}.exprLanguage"), lang_r, "Expression Language Menu");
                 let mut picked: Option<&'static str> = None;
                 egui::Popup::menu(&lang).show(|ui| {
-                    for (cat, items) in effectcraft_engine::commands::expr_tools::language_menu() {
+                    for (cat, items) in aurora_engine::commands::expr_tools::language_menu() {
                         ui.menu_button(cat, |ui| {
                             for (label, text) in items {
                                 if ui.button(label).clicked() {
@@ -1973,7 +1972,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 // (in the Keys column when it is shown).
                 if prop.is_animated() && (vis.keys || vis.av) {
                     let lt = layer.layer_time(time);
-                    let at_key = effectcraft_engine::keyframe::key_at(&prop.keys, lt).is_some();
+                    let at_key = aurora_engine::keyframe::key_at(&prop.keys, lt).is_some();
                     let nav_x = if vis.keys { cw.keys + 12.0 } else { cw.av + 18.0 };
                     let prev = Rect::from_center_size(pos2(nav_x, cy), vec2(12.0, 14.0));
                     let mid = Rect::from_center_size(pos2(nav_x + 16.0, cy), vec2(14.0, 14.0));
@@ -2071,12 +2070,12 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                         if x < graph_x0 - 8.0 || x > rect.max.x + 8.0 {
                             continue;
                         }
-                        let kref = effectcraft_engine::KeyRef { layer: layer.id, prop: *uid, time: k.time };
+                        let kref = aurora_engine::KeyRef { layer: layer.id, prop: *uid, time: k.time };
                         let ks = sel_keys.contains(&kref);
                         let icon = k.icon();
                         let c = pos2(x, cy);
                         // Labelled keys take their label colour (brighter when selected).
-                        let kcol = match effectcraft_engine::color::Label::ALL.get(k.label as usize).filter(|_| k.label > 0) {
+                        let kcol = match aurora_engine::color::Label::ALL.get(k.label as usize).filter(|_| k.label > 0) {
                             Some(l) => {
                                 let c = t.label(*l);
                                 if ks { c } else { c.gamma_multiply(0.75) }
@@ -2152,7 +2151,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                                 if lbl == "Select All Keyframes" {
                                     // Keyframe colour labels.
                                     ui.menu_button("Label", |ui| {
-                                        for (i, l) in effectcraft_engine::color::Label::ALL.iter().enumerate() {
+                                        for (i, l) in aurora_engine::color::Label::ALL.iter().enumerate() {
                                             if ui.add(egui::Button::new(l.name()).selected(k.label as usize == i)).clicked() {
                                                 if !ks {
                                                     actions.push((
@@ -2578,7 +2577,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 /// change by frames), Stretch (click: Time Stretch dialog).
 #[allow(clippy::too_many_arguments)]
 fn layer_cells(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     lp: &egui::Painter,
     cw: &Cols,
@@ -2688,7 +2687,7 @@ fn walk_groups(g: &PropGroup, out: &mut Vec<u64>) {
 /// A stroke's Dashes "+" / "−" buttons (add or remove a Dash/Gap pair).
 #[allow(clippy::too_many_arguments)]
 fn dash_buttons(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -2746,7 +2745,7 @@ const SHAPE_ADD_ITEMS: &[(&str, &str)] = &[
 /// selected shape group, else to the layer's contents.
 #[allow(clippy::too_many_arguments)]
 fn shape_add_popup(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -2788,7 +2787,7 @@ fn shape_add_popup(
 /// The Text group's "Animate:" and an animator's "Add:" pop-up menus (AE's twirl-down menus).
 #[allow(clippy::too_many_arguments)]
 fn text_anim_popups(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -2797,7 +2796,7 @@ fn text_anim_popups(
     cy: f32,
     actions: &mut Vec<(String, serde_json::Value)>,
 ) {
-    use effectcraft_engine::project::build::TEXT_ANIMATOR_KINDS;
+    use aurora_engine::project::build::TEXT_ANIMATOR_KINDS;
     if !matches!(layer.source, LayerSource::Text) {
         return;
     }
@@ -2834,9 +2833,9 @@ fn text_anim_popups(
             acts.push(if *k == "-" { (String::new(), json!(null)) } else { ("layer.addTextAnimator".into(), json!({"layer": layer.id.0, "property": k})) });
         }
         // Variable Font Axes of the layer's font.
-        if let Some(effectcraft_engine::keyframe::Value::Text(doc)) = layer.props.prop("text/sourceText").map(|p| p.value.clone()) {
-            let face = effectcraft_engine::text::resolve(&doc.font, &doc.style).face;
-            let axes = effectcraft_engine::text::variable::font_axes(face);
+        if let Some(aurora_engine::keyframe::Value::Text(doc)) = layer.props.prop("text/sourceText").map(|p| p.value.clone()) {
+            let face = aurora_engine::text::resolve(&doc.font, &doc.style).face;
+            let axes = aurora_engine::text::variable::font_axes(face);
             if !axes.is_empty() {
                 opts.push("-".into());
                 acts.push((String::new(), json!(null)));
@@ -2967,7 +2966,7 @@ fn constrained(c: &[f64], d: usize, v: f64) -> Vec<f64> {
 
 /// Inline value editor for a property row; pushes `prop.set` actions.
 fn value_editor(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -3115,8 +3114,8 @@ mod tests {
     use super::*;
 
     /// A comp with two solids; "Box" has an animated Position and a Gaussian Blur.
-    fn app() -> EffectcraftApp {
-        let mut s = effectcraft_engine::Session::default();
+    fn app() -> AuroraApp {
+        let mut s = aurora_engine::Session::default();
         s.execute("comp.new", json!({"name": "T", "width": 320, "height": 180, "duration": 4})).unwrap();
         s.execute("layer.newSolid", json!({"name": "Plate", "color": "#406080", "width": 320, "height": 180})).unwrap();
         s.execute("layer.newSolid", json!({"name": "Box", "color": "#e04020", "width": 40, "height": 40})).unwrap();
@@ -3126,10 +3125,10 @@ mod tests {
         s.execute("effect.apply", json!({"effect": "ec.blur.gaussian"})).unwrap();
         let pos = s.active_comp().unwrap().layer(LayerId(bx)).unwrap().transform().unwrap().get("position").unwrap().uid;
         s.execute("prop.toggleAnimation", json!({"layer": bx, "prop": pos})).unwrap();
-        EffectcraftApp::new(s)
+        AuroraApp::new(s)
     }
 
-    fn labels(app: &EffectcraftApp) -> Vec<String> {
+    fn labels(app: &AuroraApp) -> Vec<String> {
         let comp = app.session.active_comp().unwrap().clone();
         build_rows(app, &comp)
             .into_iter()
@@ -3240,7 +3239,7 @@ mod tests {
         let comp = app.session.active_comp().unwrap().clone();
         let id = |n: &str| comp.layers.iter().find(|l| l.name == n).unwrap().id.0;
         let (plate, bx) = (id("Plate"), id("Box"));
-        let select = |app: &mut EffectcraftApp, l: u64| app.session.execute("layer.select", json!({"layers": [l]})).unwrap();
+        let select = |app: &mut AuroraApp, l: u64| app.session.execute("layer.select", json!({"layers": [l]})).unwrap();
         // Plate shows Scale (S); then U on Box.
         select(&mut app, plate);
         crate::menus::invoke(&mut app, &ctx, "timeline.reveal.scale", json!({})).unwrap();
@@ -3279,12 +3278,12 @@ mod tests {
     /// nothing.
     #[test]
     fn enabling_time_remapping_reveals_time_remap() {
-        let mut s = effectcraft_engine::Session::default();
+        let mut s = aurora_engine::Session::default();
         let inner = s.execute("comp.new", json!({"name": "Inner", "width": 32, "height": 32, "duration": 2})).unwrap()["comp"].as_u64().unwrap();
         s.execute("comp.new", json!({"name": "Main", "width": 64, "height": 64, "duration": 4})).unwrap();
         s.execute("layer.newSolid", json!({"name": "Other"})).unwrap();
         let nested = s.execute("layer.addItem", json!({"item": inner})).unwrap()["layer"].as_u64().unwrap();
-        let mut app = EffectcraftApp::new(s);
+        let mut app = AuroraApp::new(s);
         let ctx = egui::Context::default();
         crate::menus::invoke(&mut app, &ctx, "layer.enableTimeRemap", json!({"layers": [nested]})).unwrap();
         assert_eq!(app.ui.timeline.layer_reveal.get(&nested), Some(&vec!["timeRemap".to_string()]));
@@ -3314,7 +3313,7 @@ mod tests {
     fn rows_and_bars_follow_after_effects_proportions() {
         let t = crate::theme::Tokens::for_kind(crate::theme::ThemeKind::Dark);
         assert_eq!(t.row_h, 19.0);
-        let red = t.label(effectcraft_engine::color::Label::Red);
+        let red = t.label(aurora_engine::color::Label::Red);
         let bar = bar_color(red, false);
         // Muted: darker and less saturated than the label, still reddish.
         assert!(bar.r() < red.r() && bar.r() > bar.g() + 30 && bar.g() >= red.g().min(0x3a) - 1);

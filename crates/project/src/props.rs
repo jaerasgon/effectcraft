@@ -1,7 +1,7 @@
 //! The property tree: groups and properties with stable uids and match ids, addressed by paths.
 
-use effectcraft_keyframe::{Keyframe, Value};
-use effectcraft_time::Tick;
+use aurora_keyframe::{Keyframe, Value};
+use aurora_time::Tick;
 use serde::{Deserialize, Serialize};
 
 pub type Uid = u64;
@@ -122,7 +122,7 @@ impl Property {
         if self.keys.is_empty() {
             return self.value.clone();
         }
-        effectcraft_keyframe::evaluate(&self.keys, t, self.spatial).unwrap_or_else(|| self.value.clone())
+        aurora_keyframe::evaluate(&self.keys, t, self.spatial).unwrap_or_else(|| self.value.clone())
     }
     /// Set the value at `t`: adds/replaces a key when animated, else sets the static value.
     pub fn set_value_at(&mut self, t: Tick, v: Value) {
@@ -133,7 +133,7 @@ impl Property {
             if self.hold_only {
                 k = k.hold();
             }
-            effectcraft_keyframe::set_key(&mut self.keys, k);
+            aurora_keyframe::set_key(&mut self.keys, k);
         }
     }
     /// Toggle the stopwatch: on → one key at `t` with the current value; off → keep value at `t`.

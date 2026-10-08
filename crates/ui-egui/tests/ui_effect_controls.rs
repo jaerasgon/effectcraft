@@ -2,12 +2,12 @@
 //! automation ids, the on-viewer effect point control appears for the selected effect, and the
 //! crosshair / eyedropper picks set parameters from a viewer click.
 
-use effectcraft_engine::Session;
-use effectcraft_engine::keyframe::Value as KV;
-use effectcraft_engine::project::{Layer, LayerId};
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::dock::PanelKind;
-use effectcraft_ui_egui::state::FxPick;
+use aurora_engine::Session;
+use aurora_engine::keyframe::Value as KV;
+use aurora_engine::project::{Layer, LayerId};
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::dock::PanelKind;
+use aurora_ui_egui::state::FxPick;
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
@@ -29,7 +29,7 @@ fn layer(s: &Session, id: u64) -> Layer {
 
 /// A 640×360 comp: a full-frame green solid under a 200×100 solid scaled 200% at the centre,
 /// carrying controls, Curves and Levels (Individual Controls).
-fn app() -> (EffectcraftApp, Ids) {
+fn app() -> (AuroraApp, Ids) {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Main", "width": 640, "height": 360, "frameRate": 30, "duration": 10})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Back", "color": "#20c040"})).unwrap();
@@ -58,12 +58,12 @@ fn app() -> (EffectcraftApp, Ids) {
     };
     s.state.selected_layers = vec![LayerId(small)];
     s.state.selected_props.clear();
-    let mut app = EffectcraftApp::new(s);
+    let mut app = AuroraApp::new(s);
     app.show_panel(PanelKind::EffectControls);
     (app, ids)
 }
 
-fn settle(h: &mut Harness<'_, EffectcraftApp>) {
+fn settle(h: &mut Harness<'_, AuroraApp>) {
     for _ in 0..600 {
         h.step();
         if h.state().frames.inflight() == 0 && h.state().frames.last_ms.lock().map(|v| *v > 0.0).unwrap_or(false) {
@@ -76,11 +76,11 @@ fn settle(h: &mut Harness<'_, EffectcraftApp>) {
     }
 }
 
-fn ids(h: &Harness<'_, EffectcraftApp>) -> Vec<String> {
+fn ids(h: &Harness<'_, AuroraApp>) -> Vec<String> {
     h.state().auto.previous.iter().chain(h.state().auto.elements.iter()).map(|e| e.id.clone()).collect()
 }
 
-fn click(h: &mut Harness<'_, EffectcraftApp>, pos: egui::Pos2) {
+fn click(h: &mut Harness<'_, AuroraApp>, pos: egui::Pos2) {
     h.event(egui::Event::PointerMoved(pos));
     h.step();
     h.event(egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() });
@@ -145,18 +145,18 @@ fn crosshair_and_eyedropper_pick_from_the_viewer() {
     h.state_mut().ui.fx_pick = Some(FxPick { kind: "point".into(), layer: x.small, prop: x.point, name: "Point".into() });
     h.step();
     assert!(ids(&h).contains(&"viewer.fxPick".to_string()));
-    let pos = effectcraft_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [330.0, 190.0]).unwrap();
+    let pos = aurora_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [330.0, 190.0]).unwrap();
     click(&mut h, pos);
     assert!(h.state().ui.fx_pick.is_none(), "the pick is used up");
     let v = layer(&h.state().session, x.small).effects().unwrap().find(x.point).unwrap().value.clone();
     let KV::Vec2(p) = v else { panic!("{v:?}") };
     // One viewer point is up to 1/zoom comp pixels.
-    let tol = 1.0 / effectcraft_ui_egui::panels::viewer::last_fit(&h.ctx) as f64;
+    let tol = 1.0 / aurora_ui_egui::panels::viewer::last_fit(&h.ctx) as f64;
     assert!((p[0] - 105.0).abs() <= tol && (p[1] - 55.0).abs() <= tol, "{p:?}");
     // Eyedropper over the green background.
     h.state_mut().ui.fx_pick = Some(FxPick { kind: "color".into(), layer: x.small, prop: x.color, name: "Color".into() });
     h.step();
-    let pos = effectcraft_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [24.0, 24.0]).unwrap();
+    let pos = aurora_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [24.0, 24.0]).unwrap();
     click(&mut h, pos);
     let v = layer(&h.state().session, x.small).effects().unwrap().find(x.color).unwrap().value.clone();
     let KV::Color(c) = v else { panic!("{v:?}") };
@@ -177,13 +177,13 @@ fn keyer_eyedropper_picks_the_screen_from_the_effect_input() {
     let fx = s.execute("effect.apply", json!({"layers": [screen], "effect": "Key Light"})).unwrap()["effects"][0].as_u64().unwrap();
     let prop = layer(&s, screen).effects().unwrap().groups().find(|g| g.uid == fx).and_then(|g| g.get("screenColour")).map(|p| p.uid).unwrap();
     s.state.selected_layers = vec![LayerId(screen)];
-    let mut app = EffectcraftApp::new(s);
+    let mut app = AuroraApp::new(s);
     app.show_panel(PanelKind::EffectControls);
     let mut h = Harness::builder().with_size(egui::vec2(1700.0, 1100.0)).build_eframe(|_| app);
     settle(&mut h);
     h.state_mut().ui.fx_pick = Some(FxPick { kind: "color".into(), layer: screen, prop, name: "Screen Colour".into() });
     h.step();
-    let pos = effectcraft_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [160.0, 90.0]).unwrap();
+    let pos = aurora_ui_egui::panels::viewer::comp_to_screen(&h.ctx, [160.0, 90.0]).unwrap();
     click(&mut h, pos);
     assert!(h.state().ui.fx_pick.is_none(), "the pick is used up");
     let v = layer(&h.state().session, screen).effects().unwrap().find(prop).unwrap().value.clone();
@@ -198,13 +198,13 @@ fn keyer_eyedropper_picks_the_screen_from_the_effect_input() {
     assert!(img.get(160, 90)[3] < 0.01, "{:?}", img.get(160, 90));
 }
 
-fn rect_of(h: &Harness<'_, EffectcraftApp>, id: &str) -> egui::Rect {
+fn rect_of(h: &Harness<'_, AuroraApp>, id: &str) -> egui::Rect {
     let e = h.state().auto.previous.iter().chain(h.state().auto.elements.iter()).find(|e| e.id == id).unwrap_or_else(|| panic!("no {id}")).clone();
     egui::Rect::from_min_size(egui::pos2(e.rect[0], e.rect[1]), egui::vec2(e.rect[2], e.rect[3]))
 }
 
 /// Drag one pixel per frame, as a slow hand does.
-fn slow_drag(h: &mut Harness<'_, EffectcraftApp>, from: egui::Pos2, dx: f32) {
+fn slow_drag(h: &mut Harness<'_, AuroraApp>, from: egui::Pos2, dx: f32) {
     h.event(egui::Event::PointerMoved(from));
     h.step();
     h.event(egui::Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() });
@@ -219,7 +219,7 @@ fn slow_drag(h: &mut Harness<'_, EffectcraftApp>, from: egui::Pos2, dx: f32) {
 }
 
 /// Click a hot number and type a value over it.
-fn type_into(h: &mut Harness<'_, EffectcraftApp>, id: &str, text: &str) {
+fn type_into(h: &mut Harness<'_, AuroraApp>, id: &str, text: &str) {
     let p = rect_of(h, id).center();
     click(h, p);
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
@@ -236,7 +236,7 @@ fn angle_revolutions_scrub_and_take_typing() {
     let (app, x) = app();
     let mut h = Harness::builder().with_size(egui::vec2(1700.0, 1100.0)).build_eframe(|_| app);
     settle(&mut h);
-    let angle = |h: &Harness<'_, EffectcraftApp>| layer(&h.state().session, x.small).effects().unwrap().find(x.angle).unwrap().value.as_f64();
+    let angle = |h: &Harness<'_, AuroraApp>| layer(&h.state().session, x.small).effects().unwrap().find(x.angle).unwrap().value.as_f64();
     h.state_mut().session.execute("prop.set", json!({"layer": x.small, "prop": x.angle, "value": 45.0})).unwrap();
     h.run_steps(3);
     let revs = format!("effectControls.prop.{}.revolutions", x.angle);
@@ -259,10 +259,10 @@ fn angle_revolutions_scrub_and_take_typing() {
     let rot = layer(&h.state().session, x.small).props.prop("transform/rotation").unwrap().uid;
     h.state_mut().show_panel(PanelKind::Timeline);
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.rotation", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.rotation", json!({})).unwrap();
     h.run_steps(4);
     type_into(&mut h, &format!("timeline.prop.{rot}.revolutions"), "-2");
-    let rotation = |h: &Harness<'_, EffectcraftApp>| layer(&h.state().session, x.small).props.prop("transform/rotation").unwrap().value.as_f64();
+    let rotation = |h: &Harness<'_, AuroraApp>| layer(&h.state().session, x.small).props.prop("transform/rotation").unwrap().value.as_f64();
     assert_eq!(rotation(&h), -720.0);
     // The Properties panel's Rotation.
     h.state_mut().show_panel(PanelKind::Properties);
@@ -271,7 +271,7 @@ fn angle_revolutions_scrub_and_take_typing() {
     assert_eq!(rotation(&h), 360.0);
 }
 
-fn right_click(h: &mut Harness<'_, EffectcraftApp>, pos: egui::Pos2) {
+fn right_click(h: &mut Harness<'_, AuroraApp>, pos: egui::Pos2) {
     h.event(egui::Event::PointerMoved(pos));
     h.step();
     h.event(egui::Event::PointerButton { pos, button: egui::PointerButton::Secondary, pressed: true, modifiers: Default::default() });
@@ -280,7 +280,7 @@ fn right_click(h: &mut Harness<'_, EffectcraftApp>, pos: egui::Pos2) {
     h.run_steps(2);
 }
 
-fn hover(h: &mut Harness<'_, EffectcraftApp>, pos: egui::Pos2) {
+fn hover(h: &mut Harness<'_, AuroraApp>, pos: egui::Pos2) {
     h.event(egui::Event::PointerMoved(pos));
     h.run_steps(3);
 }
@@ -296,7 +296,7 @@ fn right_click_in_effect_controls_shows_the_effect_menu() {
     let b = s.execute("layer.newSolid", json!({"name": "B", "color": "#804060"})).unwrap()["layer"].as_u64().unwrap();
     let fill = s.execute("effect.apply", json!({"layers": [b], "effect": "Fill"})).unwrap()["effects"][0].as_u64().unwrap();
     s.state.selected_layers = vec![LayerId(b), LayerId(a)];
-    let mut app = EffectcraftApp::new(s);
+    let mut app = AuroraApp::new(s);
     app.show_panel(PanelKind::EffectControls);
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| app);
     h.run_steps(3);
@@ -328,7 +328,7 @@ fn right_click_in_effect_controls_shows_the_effect_menu() {
         hover(&mut h, egui::pos2(at.x, cat.center().y + (at.y - cat.center().y) * k as f32 / 10.0));
     }
     click(&mut h, at);
-    let names = |h: &Harness<'_, EffectcraftApp>, l: u64| -> Vec<String> {
+    let names = |h: &Harness<'_, AuroraApp>, l: u64| -> Vec<String> {
         layer(&h.state().session, l).effects().map(|f| f.groups().map(|g| g.name.clone()).collect()).unwrap_or_default()
     };
     assert_eq!(names(&h, b), ["Fill", "Gaussian Blur"]);

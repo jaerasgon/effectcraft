@@ -46,12 +46,12 @@ jobs:
           }
       - name: XML, desktop entry, AppStream, Flatpak manifest
         run: |
-          xmllint --noout packaging/windows/effectcraft.wxs packaging/macos/*.plist* packaging/linux/*.xml*
+          xmllint --noout packaging/windows/aurora.wxs packaging/macos/*.plist* packaging/linux/*.xml*
           # Windows Installer needs Icon ids ending in .ico or .exe, or shortcuts show a blank icon.
-          if grep -oE '<Icon Id="[^"]*"' packaging/windows/effectcraft.wxs | grep -vE '\.(ico|exe)"$'; then
+          if grep -oE '<Icon Id="[^"]*"' packaging/windows/aurora.wxs | grep -vE '\.(ico|exe)"$'; then
             echo "::error::Icon Id must end in .ico or .exe"; exit 1
           fi
-          desktop-file-validate packaging/linux/ai.storyteller.effectcraft.desktop
-          sed -e 's/@VERSION@/0.0.0/' -e 's/@DATE@/2026-01-01/' packaging/linux/ai.storyteller.effectcraft.metainfo.xml.in >"$RUNNER_TEMP/ai.storyteller.effectcraft.metainfo.xml"
-          appstreamcli validate --no-net --explain "$RUNNER_TEMP/ai.storyteller.effectcraft.metainfo.xml"
-          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/ai.storyteller.effectcraft.yml')); assert m['id'] == 'ai.storyteller.effectcraft' and m['command'] == 'effectcraft'"
+          desktop-file-validate packaging/linux/com.jaerasgon.aurora.desktop
+          sed -e 's/@VERSION@/0.0.0/' -e 's/@DATE@/2026-01-01/' packaging/linux/com.jaerasgon.aurora.metainfo.xml.in >"$RUNNER_TEMP/com.jaerasgon.aurora.metainfo.xml"
+          appstreamcli validate --no-net --explain "$RUNNER_TEMP/com.jaerasgon.aurora.metainfo.xml"
+          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/com.jaerasgon.aurora.yml')); assert m['id'] == 'com.jaerasgon.aurora' and m['command'] == 'aurora'"

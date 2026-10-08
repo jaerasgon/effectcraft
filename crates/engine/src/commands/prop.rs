@@ -1,8 +1,8 @@
 //! Properties, keyframes and expressions (Animation menu + timeline/Effect Controls gestures).
 
-use effectcraft_keyframe::{Ease, Interp, Keyframe, easy_ease, key_at, set_key};
-use effectcraft_project::{GroupKind, ItemId, Layer, LayerId, Property, Uid};
-use effectcraft_time::Tick;
+use aurora_keyframe::{Ease, Interp, Keyframe, easy_ease, key_at, set_key};
+use aurora_project::{GroupKind, ItemId, Layer, LayerId, Property, Uid};
+use aurora_time::Tick;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, b_p, bad, f_p, has_comp, has_keys, has_layers, layer_mut, layer_p, layers_p, merge_p, str_p};
@@ -92,10 +92,10 @@ fn set(s: &mut Session, p: &Value) -> Result<Value> {
         let cur = pr.value_at(lt);
         let mut nv = cur.coerce_json(&v).ok_or_else(|| bad("prop.set", format!("can't use {v} for a {} property", cur.kind_name())))?;
         // Clamp to slider ranges.
-        if let effectcraft_project::ParamUi::Slider { min, max, .. } = pr.ui
-            && let effectcraft_keyframe::Value::Scalar(x) = nv
+        if let aurora_project::ParamUi::Slider { min, max, .. } = pr.ui
+            && let aurora_keyframe::Value::Scalar(x) = nv
         {
-            nv = effectcraft_keyframe::Value::Scalar(x.clamp(min, max));
+            nv = aurora_keyframe::Value::Scalar(x.clamp(min, max));
         }
         pr.set_value_at(at.unwrap_or(lt), nv.clone());
         Ok(nv.to_json())
@@ -250,16 +250,16 @@ fn set_expr(s: &mut Session, p: &Value) -> Result<Value> {
     let r = with_prop(s, "Expression", merge_p(p), cid, lid, uid, |pr, _| {
         match (&text, enabled) {
             (Some(t), _) if t.trim().is_empty() => pr.expr = None,
-            (Some(t), e) => pr.expr = Some(effectcraft_project::Expression { text: t.clone(), enabled: e.unwrap_or(true) }),
+            (Some(t), e) => pr.expr = Some(aurora_project::Expression { text: t.clone(), enabled: e.unwrap_or(true) }),
             (None, Some(e)) => {
                 if let Some(x) = &mut pr.expr {
                     x.enabled = e;
                 } else if e {
-                    pr.expr = Some(effectcraft_project::Expression { text: def.clone(), enabled: true });
+                    pr.expr = Some(aurora_project::Expression { text: def.clone(), enabled: true });
                 }
             }
             (None, None) => {
-                pr.expr = if pr.expr.is_some() { None } else { Some(effectcraft_project::Expression { text: def.clone(), enabled: true }) };
+                pr.expr = if pr.expr.is_some() { None } else { Some(aurora_project::Expression { text: def.clone(), enabled: true }) };
             }
         }
         Ok(json!(pr.expr.as_ref().map(|e| e.text.clone())))
@@ -331,7 +331,7 @@ fn path_points(l: &Layer, uid: Uid, lt: Tick) -> Option<(Uid, usize)> {
         return None;
     }
     match owner.get("path")?.value_at(lt) {
-        effectcraft_keyframe::Value::Path(p) => Some((owner.uid, p.vertices.len())),
+        aurora_keyframe::Value::Path(p) => Some((owner.uid, p.vertices.len())),
         _ => None,
     }
 }
@@ -448,7 +448,7 @@ pub(crate) fn edit_keys(s: &mut Session, label: &str, merge: Option<&str>, f: im
             }
             // Roving keys follow their neighbours: re-time and keep the selection on them.
             let before: Vec<Tick> = pr.keys.iter().map(|k| k.time).collect();
-            if effectcraft_keyframe::retime_roving(&mut pr.keys, pr.spatial) {
+            if aurora_keyframe::retime_roving(&mut pr.keys, pr.spatial) {
                 for r in new_sel.iter_mut().filter(|r| r.layer == lid && r.prop == uid) {
                     if let Some(i) = before.iter().position(|t| *t == r.time) {
                         r.time = pr.keys[i].time;
@@ -511,7 +511,7 @@ pub(crate) fn shift_keys(s: &mut Session, label: &str, merge: Option<&str>, d: T
             }
             // Roving keys follow their neighbours: keep the selection on them.
             let before: Vec<Tick> = pr.keys.iter().map(|k| k.time).collect();
-            if effectcraft_keyframe::retime_roving(&mut pr.keys, pr.spatial) {
+            if aurora_keyframe::retime_roving(&mut pr.keys, pr.spatial) {
                 for r in sel.iter_mut().filter(|r| r.layer == lid && r.prop == uid) {
                     if let Some(i) = before.iter().position(|t| *t == r.time) {
                         r.time = pr.keys[i].time;
@@ -589,7 +589,7 @@ fn interpolation(s: &mut Session, p: &Value) -> Result<Value> {
     let roving = b_p(p, "roving");
     edit_keys(s, "Keyframe Interpolation", None, move |keys, i, _| {
         if let Some(sp) = spatial.as_deref() {
-            let (tin, tout) = effectcraft_keyframe::spatial_tangents(keys, i);
+            let (tin, tout) = aurora_keyframe::spatial_tangents(keys, i);
             let k = &mut keys[i];
             match sp {
                 "linear" => {
@@ -706,9 +706,8 @@ fn velocity(s: &mut Session, p: &Value) -> Result<Value> {
     edit_keys(s, "Keyframe Velocity", merge_p(p), move |keys, i, _| {
         let n = keys[i].value.dims().max(1);
         // Current presentation of each side, so unspecified parts keep their values.
-        let cur = |keys: &[Keyframe], out: bool| -> Vec<Ease> {
-            (0..n).map(|d| effectcraft_keyframe::side_ease(keys, i, d, false, out).unwrap_or(Ease::EASY)).collect()
-        };
+        let cur =
+            |keys: &[Keyframe], out: bool| -> Vec<Ease> { (0..n).map(|d| aurora_keyframe::side_ease(keys, i, d, false, out).unwrap_or(Ease::EASY)).collect() };
         let cur_in = cur(keys, false);
         let cur_out = cur(keys, true);
         let k = &mut keys[i];
@@ -751,7 +750,7 @@ fn convert_expr_to_keys(s: &mut Session, p: &Value) -> Result<Value> {
     let mut t = layer.in_point;
     while t < layer.out_point {
         let ctx =
-            effectcraft_render::EvalCtx { project: &s.project, comp_id: cid, comp: &comp, time: t, expr: s.expr.as_deref(), footage: Some(s.footage.as_ref()) };
+            aurora_render::EvalCtx { project: &s.project, comp_id: cid, comp: &comp, time: t, expr: s.expr.as_deref(), footage: Some(s.footage.as_ref()) };
         keys.push(Keyframe::new(layer.layer_time(t), ctx.value(&layer, &pr)));
         t += fd;
     }

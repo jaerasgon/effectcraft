@@ -3,7 +3,7 @@
 //! and Word Wrap; and the Composition panel's expression error banner (Show Expression Error
 //! Banner).
 
-use effectcraft_engine::prefs::Scripting;
+use aurora_engine::prefs::Scripting;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{Color32, FontId, Rect, Stroke, pos2, vec2};
 
@@ -354,7 +354,7 @@ pub fn editor(ui: &mut egui::Ui, id: egui::Id, buf: &mut String, rect: Rect, p: 
 /// Settings ▸ Scripting & Expressions ▸ Show Expression Error Banner: the first failing
 /// expression of the comp at the current time, in a banner along the bottom of the viewer
 /// (click it to reveal the property).
-pub fn error_banner(app: &mut crate::EffectcraftApp, ui: &egui::Ui, area: Rect) {
+pub fn error_banner(app: &mut crate::AuroraApp, ui: &egui::Ui, area: Rect) {
     if !app.session.prefs.scripting.error_banner {
         return;
     }
@@ -372,7 +372,7 @@ pub fn error_banner(app: &mut crate::EffectcraftApp, ui: &egui::Ui, area: Rect) 
     };
     let Some(first) = errors.first() else { return };
     let layer = first["layer"].as_u64().unwrap_or(0);
-    let lname = app.session.active_comp().and_then(|c| c.layer(effectcraft_engine::project::LayerId(layer))).map(|l| l.name.clone()).unwrap_or_default();
+    let lname = app.session.active_comp().and_then(|c| c.layer(aurora_engine::project::LayerId(layer))).map(|l| l.name.clone()).unwrap_or_default();
     let msg = format!(
         "⚠ Expression error{}: {} ▸ {}: {}",
         if errors.len() > 1 { format!(" (1 of {})", errors.len()) } else { String::new() },

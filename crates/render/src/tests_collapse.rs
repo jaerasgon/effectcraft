@@ -1,10 +1,10 @@
 //! Collapse Transformations, Continuously Rasterize and the Quality switch.
 
-use effectcraft_color::{BlendMode, Label};
-use effectcraft_keyframe::Value;
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{BitDepth, Comp, ItemId, ItemKind, Layer, LayerSource, Project, Quality, Solid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::{BlendMode, Label};
+use aurora_keyframe::Value;
+use aurora_project::build::{self, Ids};
+use aurora_project::{BitDepth, Comp, ItemId, ItemKind, Layer, LayerSource, Project, Quality, Solid};
+use aurora_time::{FrameRate, Tick};
 
 use crate::{Image, render_frame};
 
@@ -99,8 +99,8 @@ fn masks_on_a_collapsed_layer_force_a_flattened_render() {
     let mask = build::mask(
         &mut Ids(&mut next),
         "Mask 1",
-        effectcraft_keyframe::ShapePath::rect([50.0, 50.0], 4000.0, 4000.0),
-        effectcraft_project::MaskMode::Add,
+        aurora_keyframe::ShapePath::rect([50.0, 50.0], 4000.0, 4000.0),
+        aurora_project::MaskMode::Add,
         [255, 255, 0],
     );
     p.next_id = next;

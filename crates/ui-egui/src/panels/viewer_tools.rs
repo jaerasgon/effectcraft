@@ -4,11 +4,11 @@
 //!
 //! Edits go through engine commands (`view.*`, `comp.*`); the viewer calls in from small hooks.
 
-use effectcraft_engine::commands::viewer_cmds::FastPreviews;
-use effectcraft_engine::project::{Comp, ItemId, LayerId};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::time::Tick;
-use effectcraft_engine::viewer::{self as vw, Channel, Snap, SnapKind, SnapSource};
+use aurora_engine::commands::viewer_cmds::FastPreviews;
+use aurora_engine::project::{Comp, ItemId, LayerId};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::time::Tick;
+use aurora_engine::viewer::{self as vw, Channel, Snap, SnapKind, SnapSource};
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
@@ -16,7 +16,7 @@ use super::viewer::ViewerMap;
 use crate::icons::Icon;
 use crate::state::Resolution;
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 // ---------------------------------------------------------------- snapping
 
@@ -29,7 +29,7 @@ fn snap_id() -> egui::Id {
 }
 
 /// Layer snapping is on: the Snapping checkbox (View ▸ Snapping), inverted while Cmd/Ctrl is held.
-pub(crate) fn snapping_on(app: &EffectcraftApp, mods: egui::Modifiers) -> bool {
+pub(crate) fn snapping_on(app: &AuroraApp, mods: egui::Modifiers) -> bool {
     app.session.state.snapping != mods.command
 }
 
@@ -38,7 +38,7 @@ pub(crate) fn snapping_on(app: &EffectcraftApp, mods: egui::Modifiers) -> bool {
 /// snapping is on), guides (View ▸ Snap to Guides) and the grid (View ▸ Snap to Grid). Returns
 /// the comp-space correction (zero when nothing is near) and records the feedback for this frame.
 pub(crate) fn snap(
-    app: &EffectcraftApp,
+    app: &AuroraApp,
     ctx: &egui::Context,
     ectx: &EvalCtx,
     map: &ViewerMap,
@@ -51,7 +51,7 @@ pub(crate) fn snap(
 
 /// [`snap`] with `extra` layer targets (the Pan Behind layer's own box).
 pub(crate) fn snap_with(
-    app: &EffectcraftApp,
+    app: &AuroraApp,
     ctx: &egui::Context,
     ectx: &EvalCtx,
     map: &ViewerMap,
@@ -93,13 +93,13 @@ pub(crate) fn draw_snap(ctx: &egui::Context, painter: &egui::Painter, map: &View
     for h in &s.hits {
         if let SnapSource::Layer(l) | SnapSource::Vertex(l) = h.source
             && let Some(layer) = ectx.comp.layer(l)
-            && let Some(b) = effectcraft_engine::render::content_bounds(ectx, layer)
+            && let Some(b) = aurora_engine::render::content_bounds(ectx, layer)
         {
             let (m, _) = ectx.layer_to_comp(layer);
             let q: Vec<Pos2> = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]]
                 .iter()
                 .map(|p| {
-                    let c = m.apply(effectcraft_engine::geom::vec2(p[0], p[1]));
+                    let c = m.apply(aurora_engine::geom::vec2(p[0], p[1]));
                     map.to_screen([c.x, c.y])
                 })
                 .collect();
@@ -131,7 +131,7 @@ pub(crate) fn draw_snap(ctx: &egui::Context, painter: &egui::Painter, map: &View
 pub(crate) const RULER: f32 = 16.0;
 
 /// The viewer area left for the image once the rulers (View ▸ Show Rulers) take their strips.
-pub(crate) fn inset(app: &EffectcraftApp, area: Rect) -> Rect {
+pub(crate) fn inset(app: &AuroraApp, area: Rect) -> Rect {
     if app.ui.viewer.rulers { Rect::from_min_max(area.min + vec2(RULER, RULER), area.max) } else { area }
 }
 
@@ -152,7 +152,7 @@ fn nice(raw: f64) -> f64 {
 /// Draw the rulers (ticks relative to the zero point, live pointer markers) and handle their
 /// gestures: drag from a ruler to add a guide, drag the corner to move the zero point
 /// (double-click resets it).
-pub(crate) fn rulers(app: &mut EffectcraftApp, ui: &mut egui::Ui, map: &ViewerMap, outer: Rect, inner: Rect) {
+pub(crate) fn rulers(app: &mut AuroraApp, ui: &mut egui::Ui, map: &ViewerMap, outer: Rect, inner: Rect) {
     if !app.ui.viewer.rulers {
         return;
     }
@@ -268,13 +268,13 @@ pub(crate) fn rulers(app: &mut EffectcraftApp, ui: &mut egui::Ui, map: &ViewerMa
     }
 }
 
-pub(crate) fn guide_color(app: &EffectcraftApp) -> Color32 {
+pub(crate) fn guide_color(app: &AuroraApp) -> Color32 {
     let [r, g, b] = super::viewer::hex_rgb(&app.session.prefs.grids.guide_color).unwrap_or([0x3c, 0xc8, 0xf0]);
     Color32::from_rgb(r, g, b)
 }
 
 /// The guide under a screen point (visible, unlocked guides only): (index, vertical).
-pub(crate) fn guide_at(app: &EffectcraftApp, comp: &Comp, map: &ViewerMap, pos: Pos2) -> Option<(usize, bool)> {
+pub(crate) fn guide_at(app: &AuroraApp, comp: &Comp, map: &ViewerMap, pos: Pos2) -> Option<(usize, bool)> {
     if !app.ui.viewer.guides || app.ui.viewer.lock_guides {
         return None;
     }
@@ -287,7 +287,7 @@ pub(crate) fn guide_at(app: &EffectcraftApp, comp: &Comp, map: &ViewerMap, pos: 
 
 /// Proportional grid (Grid and guide options ▸ Proportional Grid): Settings ▸ Grids & Guides
 /// horizontal × vertical cells over the comp.
-pub(crate) fn proportional_grid(app: &EffectcraftApp, painter: &egui::Painter, comp_rect: Rect) {
+pub(crate) fn proportional_grid(app: &AuroraApp, painter: &egui::Painter, comp_rect: Rect) {
     if !app.ui.viewer.proportional_grid {
         return;
     }
@@ -317,7 +317,7 @@ fn texture_roi(ctx: &egui::Context) -> Option<[f64; 4]> {
 }
 
 /// Show Snapshot: the stored snapshot is on screen (button or F5 held).
-pub(crate) fn showing_snapshot(app: &EffectcraftApp, ctx: &egui::Context) -> bool {
+pub(crate) fn showing_snapshot(app: &AuroraApp, ctx: &egui::Context) -> bool {
     let f5 = ctx.input(|i| i.key_down(egui::Key::F5)) && !ctx.egui_wants_keyboard_input();
     app.session.snapshot.is_some() && (app.session.state.viewer.show_snapshot || f5)
 }
@@ -336,7 +336,7 @@ fn transformed(img: &egui::ColorImage, ch: Channel, colorized: bool, stops: f32,
 /// Draw the frame into `comp_rect`: the rendered frame (covering the region of interest when one
 /// is set), or the snapshot while Show Snapshot is on / F5 is held, through Show Channel and the
 /// exposure. Fast Previews ▸ Wireframe draws layer outlines instead.
-pub(crate) fn draw_frame(app: &mut EffectcraftApp, ctx: &egui::Context, painter: &egui::Painter, comp_rect: Rect, cid: ItemId, ectx: &EvalCtx) {
+pub(crate) fn draw_frame(app: &mut AuroraApp, ctx: &egui::Context, painter: &egui::Painter, comp_rect: Rect, cid: ItemId, ectx: &EvalCtx) {
     let opts = app.session.state.viewer.clone();
     let snap = showing_snapshot(app, ctx);
     // Settings ▸ Video ▸ Mirror on Computer Monitor off: playback goes to Video Preview only.
@@ -348,12 +348,12 @@ pub(crate) fn draw_frame(app: &mut EffectcraftApp, ctx: &egui::Context, painter:
         let zoom = comp_rect.width() / ectx.comp.width.max(1) as f32;
         let map = ViewerMap { origin: comp_rect.min, zoom, comp: [ectx.comp.width as f32, ectx.comp.height as f32], area: comp_rect };
         for l in ectx.comp.layers.iter().filter(|l| l.is_active_at(ectx.time) && l.has_video()) {
-            let Some(b) = effectcraft_engine::render::content_bounds(ectx, l) else { continue };
+            let Some(b) = aurora_engine::render::content_bounds(ectx, l) else { continue };
             let (m, _) = super::viewer::l2c(ectx, l);
             let q: Vec<Pos2> = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]]
                 .iter()
                 .map(|p| {
-                    let c = m.apply(effectcraft_engine::geom::vec2(p[0], p[1]));
+                    let c = m.apply(aurora_engine::geom::vec2(p[0], p[1]));
                     map.to_screen([c.x, c.y])
                 })
                 .collect();
@@ -444,7 +444,7 @@ pub(crate) fn draw_frame(app: &mut EffectcraftApp, ctx: &egui::Context, painter:
 
 /// A popup list above `anchor` (selected entries highlighted); entries register
 /// `viewer.<auto>.<n>` automation ids.
-fn popup(app: &mut EffectcraftApp, ui: &mut egui::Ui, id: &str, anchor: Rect, items: &[(String, bool)], auto: &str) -> Option<usize> {
+fn popup(app: &mut AuroraApp, ui: &mut egui::Ui, id: &str, anchor: Rect, items: &[(String, bool)], auto: &str) -> Option<usize> {
     let pid = egui::Id::new(id);
     let open: bool = ui.data(|d| d.get_temp(pid.with("open")).unwrap_or(false));
     if !open {
@@ -511,7 +511,7 @@ pub(crate) fn resolution_label(res: Resolution, scale: f64) -> String {
 /// transparency grid, mask and shape path visibility, region of interest, grid and guide
 /// options, show channel, reset exposure, exposure, take / show snapshot, Fast Previews, the 3D
 /// renderer and view, and the current time.
-pub(crate) fn bottom_bar(app: &mut EffectcraftApp, ui: &mut egui::Ui, bar: Rect, zoom: f32, fit: f32, time: Tick, comp: &Comp) {
+pub(crate) fn bottom_bar(app: &mut AuroraApp, ui: &mut egui::Ui, bar: Rect, zoom: f32, fit: f32, time: Tick, comp: &Comp) {
     let t = app.tokens;
     let p = ui.painter().clone();
     p.rect_filled(bar, 0.0, t.panel_bg);
@@ -703,7 +703,7 @@ pub(crate) fn bottom_bar(app: &mut EffectcraftApp, ui: &mut egui::Ui, bar: Rect,
             toggle_popup(ui, "vw-cam-pop");
         }
         app.auto.add("viewer.view3d", r, "3D View");
-        use effectcraft_engine::render::three_d::View3D;
+        use aurora_engine::render::three_d::View3D;
         let items: Vec<(String, bool)> = View3D::ALL.iter().map(|v| (v.label().to_string(), *v == cur)).collect();
         if let Some(i) = popup(app, ui, "vw-cam-pop", r, &items, "view3dItem") {
             let _ = app.session.execute("view.set3DView", json!({"view": View3D::ALL[i].id()}));

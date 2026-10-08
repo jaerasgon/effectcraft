@@ -10,8 +10,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use effectcraft_raster::AuxChannels;
-use effectcraft_raster::channels3d::BACKGROUND_DEPTH;
+use aurora_raster::AuxChannels;
+use aurora_raster::channels3d::BACKGROUND_DEPTH;
 
 fn is_depth(name: &str) -> bool {
     let last = name.rsplit('.').next().unwrap_or(name);

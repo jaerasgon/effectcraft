@@ -1,12 +1,12 @@
 //! GPU noise, blur and time family effects vs the CPU effects (the oracle): direct on a buffer at full and half
 //! resolution, as adjustment, and composited at 8 and 32 bpc.
 
-use effectcraft_color::Label;
-use effectcraft_keyframe::{Keyframe, Value};
-use effectcraft_project::build;
-use effectcraft_project::{BitDepth, Comp, ItemKind, LayerSource};
-use effectcraft_render::RenderOpts;
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_keyframe::{Keyframe, Value};
+use aurora_project::build;
+use aurora_project::{BitDepth, Comp, ItemKind, LayerSource};
+use aurora_render::RenderOpts;
+use aurora_time::{FrameRate, Tick};
 
 use crate::tests::{Scene, c, check, compare_at, effect_case, n, opts, set};
 
@@ -206,19 +206,18 @@ fn echo_and_posterize_time() {
 #[test]
 fn dust_threshold_on_quantized_input() {
     let Some(g) = crate::tests::gpu() else { return };
-    let spec = effectcraft_effects::find("ec.noise.dustscratches").unwrap();
+    let spec = aurora_effects::find("ec.noise.dustscratches").unwrap();
     let size = [70.0, 44.0];
-    let mut params =
-        effectcraft_effects::Params { values: spec.params.iter().map(|p| (p.id.to_string(), effectcraft_effects::default_value(p, size))).collect() };
+    let mut params = aurora_effects::Params { values: spec.params.iter().map(|p| (p.id.to_string(), aurora_effects::default_value(p, size))).collect() };
     params.values.insert("radius".into(), n(3.0));
     params.values.insert("threshold".into(), n(10.0));
-    let ctx = || effectcraft_effects::EffectCtx { params: &params, time: 0.25, layer_size: size, seed: 11, adjustment: false, env: Default::default() };
+    let ctx = || aurora_effects::EffectCtx { params: &params, time: 0.25, layer_size: size, seed: 11, adjustment: false, env: Default::default() };
     for seed in 1..32 {
         let mut img = crate::tests::pattern(seed, 70, 44);
-        effectcraft_render::color::quantize(&mut img, 255.0);
-        let buf = effectcraft_effects::Buf { img, offset: [0.0; 2], scale: 1.0 };
+        aurora_render::color::quantize(&mut img, 255.0);
+        let buf = aurora_effects::Buf { img, offset: [0.0; 2], scale: 1.0 };
         let cpu = (spec.render)(&ctx(), buf.clone());
-        let gpu = effectcraft_render::Accelerator::effects(g, &[effectcraft_render::FxStep { spec, ctx: ctx() }], &buf, None).unwrap();
+        let gpu = aurora_render::Accelerator::effects(g, &[aurora_render::FxStep { spec, ctx: ctx() }], &buf, None).unwrap();
         for (i, (a, b)) in cpu.img.data.iter().zip(&gpu.img.data).enumerate() {
             let d = a.iter().zip(b).map(|(x, y)| (x - y).abs()).fold(0.0_f32, f32::max);
             assert!(d < 1e-6, "seed {seed} pixel {i} input {:?} CPU {a:?} GPU {b:?}", buf.img.data[i]);

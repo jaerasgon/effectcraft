@@ -1,19 +1,19 @@
 //! The Tools bar: home, the tool slots, tool options, snapping, workspaces and the community
-//! buttons (Discord is always one click away).
+//! buttons.
 
 use egui::{Align2, Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
-use crate::icons::{self, Icon};
+use crate::icons::Icon;
 use crate::state::Tool;
 use crate::theme::Tokens;
 use crate::widgets;
-use crate::{Dialog, EffectcraftApp};
-use effectcraft_color::BlendMode;
-use effectcraft_engine::commands::shape_tool::{PaintKind, ToolPaint};
-use effectcraft_engine::project::{LayerId, LayerSource};
+use crate::{AuroraApp, Dialog};
+use aurora_color::BlendMode;
+use aurora_engine::commands::shape_tool::{PaintKind, ToolPaint};
+use aurora_engine::project::{LayerId, LayerSource};
 
-pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().clone();
     p.rect_filled(rect, 0.0, t.header_bg);
@@ -25,8 +25,8 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let brand = Rect::from_min_size(pos2(x, cy - 12.0), vec2(24.0, 24.0));
     paint_logo(&p, brand);
     let bresp = ui.interact(brand, egui::Id::new("brand"), Sense::click());
-    app.auto.add("header.about", brand, "About EffectCraft");
-    if bresp.on_hover_text("About EffectCraft").clicked() {
+    app.auto.add("header.about", brand, "About Aurora");
+    if bresp.on_hover_text("About Aurora").clicked() {
         app.dialog = Some(Dialog::About);
     }
     x += 32.0;
@@ -105,7 +105,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     let layer_paint = shape_layers
         .first()
         .and_then(|id| app.session.active_comp()?.layer(LayerId(*id)))
-        .map(|l| effectcraft_engine::commands::shape_stroke::first_paint(l, l.layer_time(app.session.time())));
+        .map(|l| aurora_engine::commands::shape_stroke::first_paint(l, l.layer_time(app.session.time())));
     if let Some((fill, stroke, width)) = layer_paint {
         let rgb = |c: [f64; 4]| [c[0] as f32, c[1] as f32, c[2] as f32];
         let tool = &mut app.session.state.shape_tool;
@@ -147,30 +147,6 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 
     // Right side: community buttons, workspaces.
     let mut rx = rect.max.x - 10.0;
-    let discord = Rect::from_min_max(pos2(rx - 104.0, cy - 13.0), pos2(rx, cy + 13.0));
-    let dresp = ui.interact(discord, egui::Id::new("hdr-discord"), Sense::click());
-    let dc = Color32::from_rgb(0x58, 0x65, 0xf2);
-    p.rect_filled(discord, 13.0, if dresp.hovered() { dc.gamma_multiply(1.2) } else { dc });
-    icons::paint(&p, Rect::from_center_size(pos2(discord.min.x + 16.0, cy), vec2(14.0, 14.0)), Icon::Chat, Color32::WHITE);
-    p.text(pos2(discord.min.x + 28.0, cy), Align2::LEFT_CENTER, "Discord", Tokens::semibold(12.0), Color32::WHITE);
-    app.auto.add("header.discord", discord, "Join the ArtCraft Discord");
-    if dresp.on_hover_text("Join the ArtCraft community on Discord").clicked() {
-        let _ = app.session.execute("help.discord", json!({}));
-    }
-    rx = discord.min.x - 6.0;
-    for (id, icon, tip, cmd) in
-        [("hdr-github", Icon::Code, "EffectCraft on GitHub", "help.github"), ("hdr-web", Icon::Globe, "EffectCraft on getartcraft.com", "help.appPage")]
-    {
-        let r = Rect::from_min_max(pos2(rx - 26.0, cy - 13.0), pos2(rx, cy + 13.0));
-        if widgets::icon_button(ui, r, icon, false, &t, egui::Id::new(id)).on_hover_text(tip).clicked() {
-            let _ = app.session.execute(cmd, json!({}));
-        }
-        app.auto.add(&format!("header.{}", &id[4..]), r, tip);
-        rx = r.min.x - 4.0;
-    }
-    rx -= 10.0;
-    p.line_segment([pos2(rx, cy - 10.0), pos2(rx, cy + 10.0)], Stroke::new(1.0, t.separator));
-    rx -= 10.0;
     // Workspace tabs (right to left), with a » menu of all.
     let more = Rect::from_min_max(pos2(rx - 20.0, cy - 11.0), pos2(rx, cy + 11.0));
     let mresp = ui.interact(more, egui::Id::new("ws-more"), Sense::click());
@@ -223,7 +199,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 }
 
 /// Set the shape tools' options (`shape.toolOptions`).
-fn tool_options(app: &mut EffectcraftApp, v: serde_json::Value) {
+fn tool_options(app: &mut AuroraApp, v: serde_json::Value) {
     if let Err(e) = app.session.execute("shape.toolOptions", v) {
         app.ui.status = e.to_string();
     }
@@ -236,7 +212,7 @@ fn picker_id(key: &str) -> egui::Id {
 
 /// Tool Creates Shape / Tool Creates Mask: with a shape layer selected, whether the shape tools
 /// and the Pen draw shapes into it or masks on it. Returns the next x.
-fn creates_buttons(app: &mut EffectcraftApp, ui: &mut egui::Ui, mut x: f32, cy: f32) -> f32 {
+fn creates_buttons(app: &mut AuroraApp, ui: &mut egui::Ui, mut x: f32, cy: f32) -> f32 {
     let t = app.tokens;
     for (mask, icon, tip, key) in [(false, Icon::ShapeLayer, "Tool Creates Shape", "createsShape"), (true, Icon::MaskVis, "Tool Creates Mask", "createsMask")] {
         let r = Rect::from_min_size(pos2(x, cy - 13.0), vec2(26.0, 26.0));
@@ -252,11 +228,11 @@ fn creates_buttons(app: &mut EffectcraftApp, ui: &mut egui::Ui, mut x: f32, cy: 
 
 /// Fill and Stroke (the words open Fill Options / Stroke Options), their swatches and the
 /// Stroke Width: for new shapes, and for the selected shape layers. Returns the next x.
-fn fill_stroke_options(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, shape_layers: &[u64], mut x: f32, cy: f32) -> f32 {
+fn fill_stroke_options(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, shape_layers: &[u64], mut x: f32, cy: f32) -> f32 {
     let t = app.tokens;
     // The selected shape layers take the colours and the width too, one undo step per picker
     // session or drag.
-    let paint = |app: &mut EffectcraftApp, key: &str, v: serde_json::Value| {
+    let paint = |app: &mut AuroraApp, key: &str, v: serde_json::Value| {
         if shape_layers.is_empty() {
             return;
         }
@@ -319,7 +295,7 @@ fn fill_stroke_options(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Pa
 
 /// Fill Options / Stroke Options: None, Solid Color, Linear Gradient or Radial Gradient, and the
 /// blend mode and opacity new shapes get (After Effects' dialogs, applied as they change).
-fn paint_options_popup(app: &mut EffectcraftApp, ui: &mut egui::Ui, key: &str, title: &str, pos: egui::Pos2) {
+fn paint_options_popup(app: &mut AuroraApp, ui: &mut egui::Ui, key: &str, title: &str, pos: egui::Pos2) {
     let id = egui::Id::new(("tool-paint-options", key));
     if !widgets::popup_is_open(ui, id) {
         return;
@@ -422,7 +398,7 @@ fn paint_swatch(p: &egui::Painter, r: Rect, paint: &ToolPaint, hovered: bool, t:
 
 /// Puppet tool options: Mesh: Show, Expansion, Density (for new meshes and the selected
 /// layer's meshes). Returns the next x.
-fn puppet_options(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, mut x: f32, cy: f32) -> f32 {
+fn puppet_options(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, mut x: f32, cy: f32) -> f32 {
     let t = app.tokens;
     let o = app.session.state.puppet.clone();
     p.text(pos2(x, cy), Align2::LEFT_CENTER, "Mesh:", Tokens::ui(12.0), t.text_dim);
@@ -476,7 +452,7 @@ fn puppet_options(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter
     r.max.x + 16.0
 }
 
-fn ws_menu(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
+fn ws_menu(app: &mut AuroraApp, ui: &mut egui::Ui) {
     for w in app.workspace_names() {
         if ui.selectable_label(app.ui.workspace == w, &w).clicked() {
             app.set_workspace(&w);
@@ -513,20 +489,19 @@ pub fn color_popup(ui: &mut egui::Ui, id: egui::Id, pos: egui::Pos2, c: &mut [f3
     changed
 }
 
-/// The ArtCraft mark as supplied in `docs/brand` (the README's and getartcraft.com's logo; used
-/// unmodified, see `docs/brand/LICENSE-brand.txt`).
-static ARTCRAFT_MARK: &[u8] = include_bytes!("../../../docs/brand/artcraft-mark.png");
+/// The Aurora mark as supplied in `docs/brand`.
+static AURORA_MARK: &[u8] = include_bytes!("../../../docs/brand/aurora-mark.png");
 
-/// The ArtCraft mark in `r` (decoded once into a mipmapped texture, so it stays crisp from the
+/// The Aurora mark in `r` (decoded once into a mipmapped texture, so it stays crisp from the
 /// 24 px Tools bar to the About dialog). Nothing is drawn if it can't be decoded.
 pub fn paint_logo(p: &egui::Painter, r: Rect) {
     let ctx = p.ctx();
-    let id = egui::Id::new("artcraft-mark");
+    let id = egui::Id::new("aurora-mark");
     let tex = ctx.data(|d| d.get_temp::<Option<egui::TextureHandle>>(id)).unwrap_or_else(|| {
-        let tex = image::load_from_memory_with_format(ARTCRAFT_MARK, image::ImageFormat::Png).ok().map(|img| {
+        let tex = image::load_from_memory_with_format(AURORA_MARK, image::ImageFormat::Png).ok().map(|img| {
             let img = img.to_rgba8();
             let ci = egui::ColorImage::from_rgba_unmultiplied([img.width() as usize, img.height() as usize], img.as_raw());
-            ctx.load_texture("artcraft-mark", ci, egui::TextureOptions::LINEAR.with_mipmap_mode(Some(egui::TextureFilter::Linear)))
+            ctx.load_texture("aurora-mark", ci, egui::TextureOptions::LINEAR.with_mipmap_mode(Some(egui::TextureFilter::Linear)))
         });
         ctx.data_mut(|d| d.insert_temp(id, tex.clone()));
         tex

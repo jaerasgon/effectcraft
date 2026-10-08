@@ -6,8 +6,8 @@
 //! viewer (the layer plane is z = 0). A [`Proj`] maps buffer-world points to buffer pixels
 //! (homogeneous), so every camera system reduces to one 3×4 matrix.
 
-use effectcraft_keyframe::Value;
-use effectcraft_project::ParamUi;
+use aurora_keyframe::Value;
+use aurora_project::ParamUi;
 
 use crate::sim::pt;
 use crate::{Buf, EffectCtx, ParamSpec, col, num, p, popup, slider};
@@ -200,8 +200,8 @@ pub(crate) fn inv3(m: &M3) -> Option<M3> {
 
 /// Homography taking the unit square's corners (0,0) (1,0) (1,1) (0,1) to `q`.
 fn square_to_quad(q: [[f64; 2]; 4]) -> M3 {
-    let v = |p: [f64; 2]| effectcraft_geom::Vec2 { x: p[0], y: p[1] };
-    effectcraft_geom::Mat3::square_to_quad([v(q[0]), v(q[1]), v(q[2]), v(q[3])]).0
+    let v = |p: [f64; 2]| aurora_geom::Vec2 { x: p[0], y: p[1] };
+    aurora_geom::Mat3::square_to_quad([v(q[0]), v(q[1]), v(q[2]), v(q[3])]).0
 }
 
 /// The camera an effect renders through, from its Camera System parameters.

@@ -2,8 +2,8 @@
 //! editor key edits, time remapping/stretch/reverse/freeze, separate dimensions, pick-whips,
 //! expressions and masks (pen tool). Every command is checked with undo/redo.
 
-use effectcraft_keyframe::{Interp, Value as KV};
-use effectcraft_project::Property;
+use aurora_keyframe::{Interp, Value as KV};
+use aurora_project::Property;
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -17,7 +17,7 @@ pub(crate) fn setup() -> (Session, u64) {
 }
 
 pub(crate) fn prop(s: &Session, layer: u64, path: &str) -> Property {
-    s.active_comp().unwrap().layer(effectcraft_project::LayerId(layer)).unwrap().props.prop(path).unwrap().clone()
+    s.active_comp().unwrap().layer(aurora_project::LayerId(layer)).unwrap().props.prop(path).unwrap().clone()
 }
 
 /// Key `path` at the given (time, value) pairs.
@@ -66,7 +66,7 @@ fn easy_ease_family_sets_influence_and_zero_speed() {
     // Eased motion is slow near the key.
     s.execute("keys.easyEase", json!({})).unwrap();
     let p = prop(&s, l, "transform/opacity");
-    let early = p.value_at(effectcraft_time::Tick::from_seconds_f64(0.1)).as_f64();
+    let early = p.value_at(aurora_time::Tick::from_seconds_f64(0.1)).as_f64();
     assert!(early < 5.0, "{early}");
 }
 
@@ -259,7 +259,7 @@ fn pen_tool_draws_edits_and_closes_a_mask() {
     assert_eq!(s.state.selected_vertices.last().unwrap().index, 3);
     // The mask cuts the 100×100 solid (layer centred in the 400×300 comp at 150..250, 100..200).
     let cid = s.active_comp_id().unwrap();
-    let img = s.render(cid, effectcraft_time::Tick::ZERO, effectcraft_render::RenderOpts { scale: 1.0, ..Default::default() });
+    let img = s.render(cid, aurora_time::Tick::ZERO, aurora_render::RenderOpts { scale: 1.0, ..Default::default() });
     assert!(img.get(200, 150)[3] > 0.99 && img.get(152, 102)[3] < 0.01);
     // Undo removes the close, redo restores it.
     s.execute("edit.undo", json!({})).unwrap();
@@ -308,7 +308,7 @@ fn alt_click_stopwatch_toggles_a_self_reference_expression() {
 
 #[test]
 fn layer_comp_and_key_times_stay_frame_aligned() {
-    let aligned = |fr: effectcraft_time::FrameRate, t: effectcraft_time::Tick| fr.snap(t) == t;
+    let aligned = |fr: aurora_time::FrameRate, t: aurora_time::Tick| fr.snap(t) == t;
     // The demo project: every comp duration, layer in/out/start and key time is on a frame.
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
@@ -355,8 +355,8 @@ fn time_set_snaps_to_the_nearest_frame_and_ae_timecode() {
     let r = s.execute("time.set", json!({"time": 2.5})).unwrap();
     assert_eq!(r["frame"], 75);
     let fr = s.active_comp().unwrap().frame_rate;
-    assert_eq!(effectcraft_time::format_timecode_ae(75, fr, false), "0:00:02:15");
-    assert_eq!(effectcraft_time::format_timecode_ae(75, fr, true), "0;00;02;15");
+    assert_eq!(aurora_time::format_timecode_ae(75, fr, false), "0:00:02:15");
+    assert_eq!(aurora_time::format_timecode_ae(75, fr, true), "0;00;02;15");
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn separate_dimensions_split_and_rejoin() {
         let cid = s.active_comp_id().unwrap();
         let comp = s.project.comp(cid).unwrap();
         let layer = &comp.layers[0];
-        let ctx = effectcraft_render::EvalCtx::new(&s.project, cid, comp, effectcraft_time::Tick::from_seconds_f64(1.0));
+        let ctx = aurora_render::EvalCtx::new(&s.project, cid, comp, aurora_time::Tick::from_seconds_f64(1.0));
         let p = ctx.value(layer, layer.transform().unwrap().get("position").unwrap()).as_vec3();
         assert!((p[0] - 100.0).abs() < 1e-6 && (p[1] - 75.0).abs() < 1e-6, "{p:?}");
     };
@@ -407,11 +407,11 @@ fn parenting_keeps_the_layer_in_place() {
     let world = |s: &Session| {
         let cid = s.active_comp_id().unwrap();
         let comp = s.project.comp(cid).unwrap();
-        let l = comp.layer(effectcraft_project::LayerId(child)).unwrap();
-        let ctx = effectcraft_render::EvalCtx::new(&s.project, cid, comp, effectcraft_time::Tick::ZERO);
+        let l = comp.layer(aurora_project::LayerId(child)).unwrap();
+        let ctx = aurora_render::EvalCtx::new(&s.project, cid, comp, aurora_time::Tick::ZERO);
         let (m, _) = ctx.layer_to_comp(l);
-        let a = m.apply(effectcraft_geom::vec2(50.0, 50.0));
-        let b = m.apply(effectcraft_geom::vec2(100.0, 50.0));
+        let a = m.apply(aurora_geom::vec2(50.0, 50.0));
+        let b = m.apply(aurora_geom::vec2(100.0, 50.0));
         (a, (b.y - a.y).atan2(b.x - a.x).to_degrees(), (b.x - a.x).hypot(b.y - a.y))
     };
     let before = world(&s);
@@ -425,7 +425,7 @@ fn parenting_keeps_the_layer_in_place() {
     let p = prop(&s, child, "transform/position").value.as_vec3();
     assert!((p[0] - 100.0).abs() < 1e-6 && (p[1] - 50.0).abs() < 1e-6, "{p:?}");
     s.execute("edit.undo", json!({})).unwrap();
-    assert!(s.active_comp().unwrap().layer(effectcraft_project::LayerId(child)).unwrap().parent.is_some());
+    assert!(s.active_comp().unwrap().layer(aurora_project::LayerId(child)).unwrap().parent.is_some());
 }
 
 #[test]
@@ -471,7 +471,7 @@ fn precomp_setup() -> (Session, u64) {
 /// X of the moving square's centre in the outer comp at `t`.
 fn square_x(s: &Session, t: f64) -> f64 {
     let cid = s.active_comp_id().unwrap();
-    let img = s.render(cid, effectcraft_time::Tick::from_seconds_f64(t), effectcraft_render::RenderOpts { scale: 1.0, ..Default::default() });
+    let img = s.render(cid, aurora_time::Tick::from_seconds_f64(t), aurora_render::RenderOpts { scale: 1.0, ..Default::default() });
     let xs: Vec<usize> = (0..img.width as usize).filter(|x| img.get(*x as i64, 50)[3] > 0.5).collect();
     assert!(!xs.is_empty(), "nothing drawn at {t}");
     (xs[0] + xs[xs.len() - 1]) as f64 / 2.0 + 0.5

@@ -4,10 +4,10 @@
 
 use std::sync::{Arc, Mutex};
 
-use effectcraft_keyframe::Value as KV;
-use effectcraft_project::render_queue::{OutputFormat, PostRenderAction};
-use effectcraft_project::{FeatherFalloff, Footage, FootageKind, GroupKind, LayerId, LayerSource, MaskMotionBlur};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_keyframe::Value as KV;
+use aurora_project::render_queue::{OutputFormat, PostRenderAction};
+use aurora_project::{FeatherFalloff, Footage, FootageKind, GroupKind, LayerId, LayerSource, MaskMotionBlur};
+use aurora_time::{FrameRate, Tick};
 use serde_json::json;
 
 use crate::{Event, ExportJob, ExportResult, Exporter, Importer, Session};
@@ -18,7 +18,7 @@ fn comp() -> Session {
     s
 }
 
-fn layer(s: &Session, id: u64) -> effectcraft_project::Layer {
+fn layer(s: &Session, id: u64) -> aurora_project::Layer {
     s.active_comp().unwrap().layer(LayerId(id)).unwrap().clone()
 }
 
@@ -30,7 +30,7 @@ fn masked(s: &mut Session) -> (u64, u64) {
     (l, m)
 }
 
-fn mask_path(s: &Session, l: u64, m: u64) -> effectcraft_keyframe::ShapePath {
+fn mask_path(s: &Session, l: u64, m: u64) -> aurora_keyframe::ShapePath {
     let ly = layer(s, l);
     let g = ly.masks().unwrap().find_group(m).unwrap();
     g.get("path").unwrap().value.as_path().unwrap().clone()
@@ -203,13 +203,13 @@ fn camera_from_view_and_view_layout() {
     assert!(s.execute("camera.fromView", json!({})).is_err(), "needs a 3D view");
     s.execute("view.3d.custom2", json!({})).unwrap();
     let cid = s.active_comp_id().unwrap();
-    let vc = s.state.views3d[&cid].cam(effectcraft_render::three_d::View3D::Custom2, 400.0, 300.0);
+    let vc = s.state.views3d[&cid].cam(aurora_render::three_d::View3D::Custom2, 400.0, 300.0);
     let r = s.execute("camera.fromView", json!({})).unwrap();
     let cam = layer(&s, r["layer"].as_u64().unwrap());
     assert!(cam.is_camera());
     let pos = cam.props.prop("transform/position").unwrap().value.as_vec3();
     assert!((0..3).all(|i| (pos[i] - vc.eye[i]).abs() < 1e-6), "{pos:?} {:?}", vc.eye);
-    assert_eq!(s.state.views3d[&cid].current, effectcraft_render::three_d::View3D::ActiveCamera);
+    assert_eq!(s.state.views3d[&cid].current, aurora_render::three_d::View3D::ActiveCamera);
     s.execute("edit.undo", json!({})).unwrap();
     assert!(!s.active_comp().unwrap().layers.iter().any(|l| l.is_camera()));
     // Switch View Layout.
@@ -319,7 +319,7 @@ fn pre_render_imports_and_replaces() {
     let l = &s.project.comp(outer).unwrap().layers[0];
     let LayerSource::Footage { item } = l.source else { panic!("not replaced: {:?}", l.source) };
     assert!(
-        matches!(&s.project.item(item).unwrap().kind, effectcraft_project::ItemKind::Footage(f) if std::path::Path::new(&f.path) == std::path::absolute("/tmp/pre/inner.mov").unwrap())
+        matches!(&s.project.item(item).unwrap().kind, aurora_project::ItemKind::Footage(f) if std::path::Path::new(&f.path) == std::path::absolute("/tmp/pre/inner.mov").unwrap())
     );
     s.execute("edit.undo", json!({})).unwrap();
     assert!(matches!(s.project.comp(outer).unwrap().layers[0].source, LayerSource::Comp { .. }));
@@ -336,9 +336,11 @@ fn post_render_actions_import_and_set_proxy() {
     assert_eq!(s.project.render_queue[0].post_render, PostRenderAction::Import);
     s.execute("renderQueue.render", json!({})).unwrap();
     assert_eq!(s.project.items.len(), items_before + 1);
-    assert!(s.project.items.values().any(
-        |i| matches!(&i.kind, effectcraft_project::ItemKind::Footage(f) if std::path::Path::new(&f.path) == std::path::absolute("/tmp/post/a.mov").unwrap())
-    ));
+    assert!(
+        s.project.items.values().any(
+            |i| matches!(&i.kind, aurora_project::ItemKind::Footage(f) if std::path::Path::new(&f.path) == std::path::absolute("/tmp/post/a.mov").unwrap())
+        )
+    );
     // Set Proxy: the comp gets the render as its proxy.
     let b = s.execute("renderQueue.add", json!({"output": "/tmp/post/b.mov"})).unwrap();
     s.execute("renderQueue.setOutputModule", json!({"item": b["item"], "postRenderAction": "Set Proxy"})).unwrap();
@@ -398,7 +400,7 @@ fn templates_save_apply_default_and_persist() {
     assert_eq!(r["outputModuleSummary"], "High Quality");
     assert!(r["outputPath"].as_str().unwrap().ends_with("a.mov"), "{r}");
     // Persisted with the project.
-    let p = effectcraft_project::Project::from_json(&s.project.to_json()).unwrap();
+    let p = aurora_project::Project::from_json(&s.project.to_json()).unwrap();
     assert_eq!(p.render_templates, s.project.render_templates);
     assert_eq!(p.render_queue, s.project.render_queue);
     // Delete: saved ones go; built-ins stay. Undo restores.
@@ -430,7 +432,7 @@ fn log_notify_and_overflow_settings() {
     assert_eq!(a["logLabel"], "Plus Per Frame Info");
     assert_eq!(std::path::Path::new(a["logPath"].as_str().unwrap()), std::path::absolute("/tmp/n/a_RenderLog.txt").unwrap());
     s.execute("renderQueue.setLog", json!({"item": a["item"], "log": "plusSettings"})).unwrap();
-    assert_eq!(s.project.render_queue[0].log, effectcraft_project::render_queue::RenderLog::PlusSettings);
+    assert_eq!(s.project.render_queue[0].log, aurora_project::render_queue::RenderLog::PlusSettings);
     s.execute("renderQueue.setOverflowFolders", json!({"folders": ["/tmp/o1", " ", "/tmp/o2"]})).unwrap();
     assert_eq!(s.project.render_prefs.overflow_folders, ["/tmp/o1", "/tmp/o2"]);
     assert_eq!(s.execute("renderQueue.setNotify", json!({})).unwrap()["notify"], true);

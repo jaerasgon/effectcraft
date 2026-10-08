@@ -1,12 +1,12 @@
 //! Layer menu.
 
-use effectcraft_color::{BlendMode, Label};
-use effectcraft_keyframe::{Justify, TextDoc, Value as KV};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{
+use aurora_color::{BlendMode, Label};
+use aurora_keyframe::{Justify, TextDoc, Value as KV};
+use aurora_project::build::{self, Ids};
+use aurora_project::{
     Comp, FrameBlend, GroupKind, ItemId, ItemKind, Layer, LayerId, LayerSource, MaskMode, MatteKind, Project, PropGroup, Quality, Solid, TrackMatte,
 };
-use effectcraft_time::Tick;
+use aurora_time::Tick;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, b_p, bad, comp_id, f_p, has_comp, has_layers, layer_mut, layer_p, layers_p, merge_p, resolve_layer, str_p, unlocked};
@@ -14,7 +14,7 @@ use crate::{EngineError, Result, Session, cmd};
 
 pub(crate) fn color_p(p: &Value, k: &str) -> Option<[f32; 3]> {
     match p.get(k)? {
-        Value::String(s) => effectcraft_color::Rgba::from_hex(s).map(|c| [c.r, c.g, c.b]),
+        Value::String(s) => aurora_color::Rgba::from_hex(s).map(|c| [c.r, c.g, c.b]),
         Value::Array(a) => {
             let g = |i: usize| a.get(i).and_then(Value::as_f64).unwrap_or(0.0) as f32;
             Some([g(0), g(1), g(2)])
@@ -68,7 +68,7 @@ pub(crate) fn place(l: &mut Layer, pos: Option<[f64; 2]>) {
 /// [`insert_layer`] at stack position `at` (0 = top) instead of above the selected layer.
 pub(crate) fn insert_layer_at(proj: &mut Project, st: &mut crate::EditorState, cid: ItemId, mut layer: Layer, at: Option<usize>) -> Result<LayerId> {
     // Text and shape layers in Advanced 3D comps get Geometry Options (extrusion, bevels).
-    if proj.comp(cid).is_some_and(|c| c.renderer == effectcraft_project::Renderer::Advanced3D) {
+    if proj.comp(cid).is_some_and(|c| c.renderer == aurora_project::Renderer::Advanced3D) {
         super::model3d::add_geometry_options(&mut proj.next_id, &mut layer);
     }
     let comp = proj.comp_mut(cid).ok_or(EngineError::NoComp)?;
@@ -263,7 +263,7 @@ fn add_item(s: &mut Session, p: &Value) -> Result<Value> {
     let it = s.project.item(item).ok_or_else(|| bad("layer.addItem", "no such item"))?.clone();
     let (src, size, dur) = match &it.kind {
         ItemKind::Comp(c) => (LayerSource::Comp { item }, (c.width, c.height), Some(c.duration)),
-        ItemKind::Footage(f) if f.kind == effectcraft_project::FootageKind::Still => {
+        ItemKind::Footage(f) if f.kind == aurora_project::FootageKind::Still => {
             // `duration`, else Settings ▸ Import ▸ Still Footage: length of the composition or a
             // duration.
             let d = f_p(p, "duration")
@@ -272,10 +272,10 @@ fn add_item(s: &mut Session, p: &Value) -> Result<Value> {
                 .map(Tick::from_seconds_f64);
             (LayerSource::Footage { item }, (f.width, f.height), d)
         }
-        ItemKind::Footage(f) if f.kind == effectcraft_project::FootageKind::Data => {
+        ItemKind::Footage(f) if f.kind == aurora_project::FootageKind::Data => {
             return Err(bad("layer.addItem", "data files can't be layers; read them in expressions with footage(\"name\").sourceData"));
         }
-        ItemKind::Footage(f) if f.kind == effectcraft_project::FootageKind::Model => {
+        ItemKind::Footage(f) if f.kind == aurora_project::FootageKind::Model => {
             return super::model3d::new_model(
                 s,
                 &serde_json::json!({"comp": cid.0, "item": item.0, "time": f_p(p, "time"), "index": p.get("index"), "position": p.get("position")}),
@@ -546,7 +546,7 @@ fn track_matte(s: &mut Session, p: &Value) -> Result<Value> {
 pub(crate) struct ParentFix {
     pub layer: LayerId,
     /// Maps Position from the old parent's space into the new one's.
-    m: effectcraft_geom::Mat3,
+    m: aurora_geom::Mat3,
     /// Added to Rotation.
     rotation: f64,
     /// Multiply Scale.
@@ -557,7 +557,7 @@ impl ParentFix {
     /// Re-express the layer's Position, Rotation and Scale (every key) in the new parent's space.
     pub fn apply(&self, l: &mut Layer) {
         let Some(tr) = l.props.sub_mut("transform") else { return };
-        let map = |pr: &mut effectcraft_project::Property, f: &dyn Fn(&KV) -> KV| {
+        let map = |pr: &mut aurora_project::Property, f: &dyn Fn(&KV) -> KV| {
             pr.value = f(&pr.value);
             for key in &mut pr.keys {
                 key.value = f(&key.value);
@@ -568,15 +568,15 @@ impl ParentFix {
             // Separated dimensions: X and Y move together, key by key at the same times.
             // Everything is read before anything is written.
             let [x, y] = [tr.get("positionX"), tr.get("positionY")].map(|p| p.map(|p| p.value.as_f64()).unwrap_or(0.0));
-            let q = m.apply(effectcraft_geom::vec2(x, y));
+            let q = m.apply(aurora_geom::vec2(x, y));
             let keys_x: Vec<(Tick, f64)> = tr.get("positionX").map(|p| p.keys.iter().map(|k| (k.time, k.value.as_f64())).collect()).unwrap_or_default();
             let keys_y: Vec<(Tick, f64)> = tr.get("positionY").map(|p| p.keys.iter().map(|k| (k.time, k.value.as_f64())).collect()).unwrap_or_default();
             let at = |keys: &[(Tick, f64)], name: &str, t: Tick, tr: &PropGroup| {
                 keys.iter().find(|k| k.0 == t).map(|k| k.1).unwrap_or_else(|| tr.get(name).map(|p| p.value_at(t).as_f64()).unwrap_or(0.0))
             };
             let (xs, ys): (Vec<f64>, Vec<f64>) = (
-                keys_x.iter().map(|&(t, x)| m.apply(effectcraft_geom::vec2(x, at(&keys_y, "positionY", t, tr))).x).collect(),
-                keys_y.iter().map(|&(t, y)| m.apply(effectcraft_geom::vec2(at(&keys_x, "positionX", t, tr), y)).y).collect(),
+                keys_x.iter().map(|&(t, x)| m.apply(aurora_geom::vec2(x, at(&keys_y, "positionY", t, tr))).x).collect(),
+                keys_y.iter().map(|&(t, y)| m.apply(aurora_geom::vec2(at(&keys_x, "positionX", t, tr), y)).y).collect(),
             );
             for (name, value, vals) in [("positionX", q.x, xs), ("positionY", q.y, ys)] {
                 if let Some(pr) = tr.get_mut(name) {
@@ -589,7 +589,7 @@ impl ParentFix {
         } else if let Some(pr) = tr.get_mut("position") {
             map(pr, &|v| {
                 let c = v.as_vec3();
-                let q = m.apply(effectcraft_geom::vec2(c[0], c[1]));
+                let q = m.apply(aurora_geom::vec2(c[0], c[1]));
                 KV::Vec3([q.x, q.y, c[2]])
             });
         }
@@ -611,12 +611,11 @@ impl ParentFix {
 /// time.
 pub(crate) fn parent_fixes(s: &Session, cid: ItemId, ids: &[LayerId], parent: Option<LayerId>) -> Vec<ParentFix> {
     let Some(comp) = s.project.comp(cid) else { return vec![] };
-    let ectx =
-        effectcraft_render::EvalCtx { project: &s.project, comp_id: cid, comp, time: s.time(), expr: s.expr.as_deref(), footage: Some(s.footage.as_ref()) };
-    let space = |id: Option<LayerId>| -> effectcraft_geom::Mat3 {
-        id.and_then(|i| comp.layer(i)).filter(|l| !l.is_3d()).map(|l| ectx.layer_to_comp(l).0).unwrap_or(effectcraft_geom::Mat3::IDENTITY)
+    let ectx = aurora_render::EvalCtx { project: &s.project, comp_id: cid, comp, time: s.time(), expr: s.expr.as_deref(), footage: Some(s.footage.as_ref()) };
+    let space = |id: Option<LayerId>| -> aurora_geom::Mat3 {
+        id.and_then(|i| comp.layer(i)).filter(|l| !l.is_3d()).map(|l| ectx.layer_to_comp(l).0).unwrap_or(aurora_geom::Mat3::IDENTITY)
     };
-    let decompose = |m: &effectcraft_geom::Mat3| {
+    let decompose = |m: &aurora_geom::Mat3| {
         let a = m.0;
         let sx = (a[0][0] * a[0][0] + a[1][0] * a[1][0]).sqrt();
         let det = a[0][0] * a[1][1] - a[0][1] * a[1][0];
@@ -774,7 +773,7 @@ fn slip(s: &mut Session, p: &Value) -> Result<Value> {
         }
         let dur = match &l.source {
             LayerSource::Footage { item } => match s.project.item(*item).map(|i| &i.kind) {
-                Some(ItemKind::Footage(f)) if f.kind != effectcraft_project::FootageKind::Still => Some(Tick(f.duration.0 * f.loop_count.max(1) as i64)),
+                Some(ItemKind::Footage(f)) if f.kind != aurora_project::FootageKind::Still => Some(Tick(f.duration.0 * f.loop_count.max(1) as i64)),
                 _ => None,
             },
             LayerSource::Comp { item } => s.project.comp(*item).map(|c| c.duration),
@@ -893,7 +892,7 @@ fn precompose(s: &mut Session, p: &Value) -> Result<Value> {
         let Some(src_item) = layer.source.item() else {
             return Err(bad(c, "\"Leave all attributes\" is available for footage, solid and precomp layers only"));
         };
-        let (w, h) = effectcraft_render::source_size(&s.project, &layer);
+        let (w, h) = aurora_render::source_size(&s.project, &layer);
         let (w, h) = if w == 0 || h == 0 { (comp.width, comp.height) } else { (w, h) };
         let dur = match s.project.item(src_item).map(|i| &i.kind) {
             Some(ItemKind::Comp(nc)) => nc.duration,
@@ -918,7 +917,7 @@ fn precompose(s: &mut Session, p: &Value) -> Result<Value> {
         return Ok(json!({"comp": new.0.0, "layer": new.1.0}));
     }
     let span = {
-        let sel: Vec<&effectcraft_project::Layer> = comp.layers.iter().filter(|l| ids.contains(&l.id)).collect();
+        let sel: Vec<&aurora_project::Layer> = comp.layers.iter().filter(|l| ids.contains(&l.id)).collect();
         let a = sel.iter().map(|l| l.in_point).min().unwrap_or(Tick(0)).max(Tick(0));
         let b = sel.iter().map(|l| l.out_point).max().unwrap_or(comp.duration).min(comp.duration);
         (a, b)
@@ -961,7 +960,7 @@ fn precompose(s: &mut Session, p: &Value) -> Result<Value> {
 fn add_mask(s: &mut Session, p: &Value) -> Result<Value> {
     let (cid, lid) = layer_p(s, p, "layer.addMask")?;
     let layer = s.project.comp(cid).and_then(|c| c.layer(lid)).ok_or(EngineError::NoComp)?.clone();
-    let (w, h) = effectcraft_render::source_size(&s.project, &layer);
+    let (w, h) = aurora_render::source_size(&s.project, &layer);
     let (w, h) = if w == 0 { (400.0, 300.0) } else { (w as f64, h as f64) };
     let shape = str_p(p, "shape").unwrap_or("rect");
     let r = p.get("rect").and_then(Value::as_array).map(|a| [0, 1, 2, 3].map(|i| a.get(i).and_then(Value::as_f64).unwrap_or(0.0)));
@@ -1094,7 +1093,7 @@ fn set_text(s: &mut Session, p: &Value) -> Result<Value> {
         let mut st = e.pending.clone().unwrap_or_else(|| doc.insertion_style(r.start));
         let mut any = false;
         for (k, v) in obj {
-            any |= effectcraft_keyframe::text_doc::apply_char_attr(&mut st, k, v).map_err(|m| bad("layer.setText", m))?;
+            any |= aurora_keyframe::text_doc::apply_char_attr(&mut st, k, v).map_err(|m| bad("layer.setText", m))?;
         }
         if any {
             e.pending = Some(st);
@@ -1148,7 +1147,7 @@ fn transform_op(s: &mut Session, p: &Value) -> Result<Value> {
     let comp = s.project.comp(cid).ok_or(EngineError::NoComp)?.clone();
     let t = s.time();
     let sizes: Vec<(LayerId, (u32, u32))> =
-        comp.layers.iter().filter(|l| ids.contains(&l.id)).map(|l| (l.id, effectcraft_render::source_size(&s.project, l))).collect();
+        comp.layers.iter().filter(|l| ids.contains(&l.id)).map(|l| (l.id, aurora_render::source_size(&s.project, l))).collect();
     s.edit("Transform", None, |proj, _| {
         for (lid, (w, h)) in &sizes {
             let l = layer_mut(proj, cid, *lid)?;
@@ -1473,12 +1472,12 @@ mod parent_chain_tests {
             let world = |s: &Session| {
                 let cid = s.active_comp_id().unwrap();
                 let comp = s.active_comp().unwrap();
-                let ctx = effectcraft_render::EvalCtx::new(&s.project, cid, comp, s.time());
-                ctx.world_matrix(comp.layer(LayerId(c)).unwrap()).apply(effectcraft_geom::Vec3::ZERO)
+                let ctx = aurora_render::EvalCtx::new(&s.project, cid, comp, s.time());
+                ctx.world_matrix(comp.layer(LayerId(c)).unwrap()).apply(aurora_geom::Vec3::ZERO)
             };
             let before = world(&s);
             s.execute("layer.setParent", json!({"layers":[c],"parent":a,"compensate":compensate})).unwrap();
-            let expected = if compensate { before } else { before + effectcraft_geom::vec3(100.0, 200.0, 0.0) };
+            let expected = if compensate { before } else { before + aurora_geom::vec3(100.0, 200.0, 0.0) };
             assert!((world(&s) - expected).length() < 1e-9);
             assert_eq!(s.active_comp().unwrap().layer(LayerId(c)).unwrap().parent, Some(LayerId(a)));
             assert_eq!(s.history.undo.len(), 1);

@@ -1,10 +1,10 @@
 //! Roto Brush & Refine Edge end to end through the commands, on synthetic footage: a textured
 //! disk moving over a textured background.
 
-use effectcraft_project::LayerId;
-use effectcraft_raster::Image;
-use effectcraft_render::RenderOpts;
-use effectcraft_track::roto::rle;
+use aurora_project::LayerId;
+use aurora_raster::Image;
+use aurora_render::RenderOpts;
+use aurora_track::roto::rle;
 use serde_json::{Value, json};
 
 use crate::Session;
@@ -95,7 +95,7 @@ fn painted(path: fn(u32) -> [f64; 2], name: &str) -> (Session, LayerId, u64) {
     s.edit("remove solid", None, |p, _| {
         p.comp_mut(cid).unwrap().layers.retain(|l| l.id != solid);
         for it in p.items.values_mut() {
-            if let effectcraft_project::ItemKind::Footage(f) = &mut it.kind {
+            if let aurora_project::ItemKind::Footage(f) = &mut it.kind {
                 f.path = name.into();
             }
         }
@@ -121,8 +121,8 @@ fn forget(s: &Session, clip: LayerId, uid: u64) {
     let l = comp.layer(clip).unwrap();
     let g = l.props.find_group(uid).unwrap();
     let size = crate::roto::layer_size(&s.project, comp, l);
-    let ch = effectcraft_effects::roto::Chain::new(&crate::roto::params_static(g), size, comp.frame_rate.as_f64(), 1.0);
-    effectcraft_effects::roto::forget(ch.keys.values().copied());
+    let ch = aurora_effects::roto::Chain::new(&crate::roto::params_static(g), size, comp.frame_rate.as_f64(), 1.0);
+    aurora_effects::roto::forget(ch.keys.values().copied());
 }
 
 fn iou_at(s: &mut Session, clip: LayerId, f: u32, c: [f64; 2]) -> f64 {
@@ -169,9 +169,9 @@ fn roto_brush_segments_and_propagates() {
     assert!(iou_at(&mut s, clip, 24, center(24)) > 0.9);
     // Undo / redo of strokes and the span.
     let n = |s: &Session| {
-        let st = s.active_comp().unwrap().layer(clip).unwrap().props.find_group(uid).unwrap().get(effectcraft_effects::roto::STROKES).unwrap().value.clone();
+        let st = s.active_comp().unwrap().layer(clip).unwrap().props.find_group(uid).unwrap().get(aurora_effects::roto::STROKES).unwrap().value.clone();
         match st {
-            effectcraft_keyframe::Value::Str(j) => effectcraft_track::roto::RotoData::from_json(&j),
+            aurora_keyframe::Value::Str(j) => aurora_track::roto::RotoData::from_json(&j),
             _ => panic!(),
         }
     };
@@ -186,7 +186,7 @@ fn roto_brush_segments_and_propagates() {
     assert_eq!(n(&s).strokes.len(), 3);
     assert_eq!(n(&s).span, [0, 24]);
     // Serde keeps the strokes; the reopened project renders the same matte.
-    let back = effectcraft_project::Project::from_json(&s.project.to_json()).unwrap();
+    let back = aurora_project::Project::from_json(&s.project.to_json()).unwrap();
     let g = back.comp(s.active_comp_id().unwrap()).unwrap().layer(clip).unwrap().props.find_group(uid).unwrap().clone();
     assert_eq!(
         crate::roto::params_static(&g).get("strokes"),
@@ -305,7 +305,7 @@ fn propagation_is_deterministic_and_runs_in_background() {
 
 /// Runs offloaded jobs at once in a second session sharing the footage, through JSON (what the
 /// browser's Web Worker does, minus the thread).
-struct InlineWorker(std::sync::Arc<dyn effectcraft_render::FootageSource>);
+struct InlineWorker(std::sync::Arc<dyn aurora_render::FootageSource>);
 
 impl crate::offload::Offload for InlineWorker {
     fn start(&self, req: crate::offload::WorkerRequest, inbox: std::sync::Arc<crate::offload::Inbox>) -> Result<(), String> {

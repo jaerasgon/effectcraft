@@ -10,14 +10,14 @@
 //!   3D Camera Tracker / Roto Brush analyses, Content-Aware Fill, Scene Edit Detection) with a
 //!   progress bar and a cancel button, and the recently finished ones.
 
-use effectcraft_engine::media_browser as mb;
-use effectcraft_engine::project::ItemId;
+use aurora_engine::media_browser as mb;
+use aurora_engine::project::ItemId;
 use egui::{Align2, Color32, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::{Value, json};
 
 use super::DragPayload;
 use super::panel_kit as kit;
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::theme::Tokens;
 
 // ---------------------------------------------------------------- Media Browser
@@ -25,7 +25,7 @@ use crate::theme::Tokens;
 type Thumb = Option<(egui::TextureHandle, [u32; 2])>;
 
 /// Thumbnail of a file (cached per path; `None` while not decoded or not decodable).
-fn thumbnail(app: &EffectcraftApp, ctx: &egui::Context, path: &str, budget: &mut u32) -> Thumb {
+fn thumbnail(app: &AuroraApp, ctx: &egui::Context, path: &str, budget: &mut u32) -> Thumb {
     let id = egui::Id::new(("mb-thumb", path));
     if let Some(t) = ctx.data(|d| d.get_temp::<Thumb>(id)) {
         return t;
@@ -42,7 +42,7 @@ fn thumbnail(app: &EffectcraftApp, ctx: &egui::Context, path: &str, budget: &mut
         }
         // A synthetic item id keyed by the path (the frame cache keys on the path).
         let hid = path.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x100_0000_01b3)) | (1 << 62);
-        let img = app.session.footage.frame(ItemId(hid), &f, effectcraft_engine::time::Tick::ZERO)?;
+        let img = app.session.footage.frame(ItemId(hid), &f, aurora_engine::time::Tick::ZERO)?;
         let step = (img.width.max(img.height) as f32 / 128.0).ceil().max(1.0) as u32;
         let (w, h) = (img.width.div_ceil(step), img.height.div_ceil(step));
         let full = img.to_rgba8();
@@ -60,7 +60,7 @@ fn thumbnail(app: &EffectcraftApp, ctx: &egui::Context, path: &str, budget: &mut
     thumb
 }
 
-pub fn media_browser(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn media_browser(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let p = ui.painter().with_clip_rect(rect);
@@ -271,7 +271,7 @@ fn comment_field(ui: &mut egui::Ui, r: Rect, id: &str, text: &str) -> Option<Str
     (resp.lost_focus() && buf != text).then_some(buf)
 }
 
-pub fn metadata(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn metadata(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     p.rect_filled(rect, 0.0, t.panel_bg);
@@ -326,7 +326,7 @@ pub fn metadata(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
 
 // ---------------------------------------------------------------- Progress
 
-pub fn progress(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn progress(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     p.rect_filled(rect, 0.0, t.panel_bg);

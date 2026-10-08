@@ -9,11 +9,11 @@ use std::process::Command;
 use std::sync::Arc;
 use std::time::Instant;
 
-use effectcraft_media::{MediaPool, probe, probe_single};
-use effectcraft_project::{AlphaMode, FootageKind, ItemId};
-use effectcraft_raster::Image;
-use effectcraft_render::FootageSource;
-use effectcraft_time::{FrameRate, TICKS_PER_SECOND, Tick};
+use aurora_media::{MediaPool, probe, probe_single};
+use aurora_project::{AlphaMode, FootageKind, ItemId};
+use aurora_raster::Image;
+use aurora_render::FootageSource;
+use aurora_time::{FrameRate, TICKS_PER_SECOND, Tick};
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../target/fixtures/media")

@@ -1,21 +1,21 @@
-use effectcraft_color::{BlendMode, Label};
-use effectcraft_keyframe::{Keyframe, ShapePath, TextDoc, Value};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{Comp, ItemId, ItemKind, LayerSource, MaskMode, MatteKind, Project, Solid, TrackMatte};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::{BlendMode, Label};
+use aurora_keyframe::{Keyframe, ShapePath, TextDoc, Value};
+use aurora_project::build::{self, Ids};
+use aurora_project::{Comp, ItemId, ItemKind, LayerSource, MaskMode, MatteKind, Project, Solid, TrackMatte};
+use aurora_time::{FrameRate, Tick};
 
 use crate::render_frame;
 
 fn setup() -> (Project, ItemId, Comp) {
     let mut p = Project::default();
     // Exact float maths; 8/16 bpc quantisation has its own tests (tests_color).
-    p.settings.bit_depth = effectcraft_project::BitDepth::Bpc32;
+    p.settings.bit_depth = aurora_project::BitDepth::Bpc32;
     let comp = Comp::new(200, 100, FrameRate::FPS_30, Tick::from_seconds_f64(2.0));
     let cid = p.add_item("Comp", Label::Sandstone, None, ItemKind::Comp(comp.clone().into()));
     (p, cid, comp)
 }
 
-fn solid(p: &mut Project, comp: &Comp, color: [f32; 3], w: u32, h: u32) -> effectcraft_project::Layer {
+fn solid(p: &mut Project, comp: &Comp, color: [f32; 3], w: u32, h: u32) -> aurora_project::Layer {
     let sid = p.add_item("Solid", Label::Red, None, ItemKind::Solid(Solid { color, width: w, height: h, pixel_aspect: 1.0 }));
     build::layer(p, comp, "Solid", LayerSource::Solid { item: sid }, (w, h), None)
 }
@@ -149,9 +149,9 @@ fn precomp_and_3d_render() {
 fn effects_run_in_pipeline() {
     let (mut p, cid, comp) = setup();
     let mut l = solid(&mut p, &comp, [1.0, 1.0, 1.0], 50, 50);
-    let spec = effectcraft_effects::find("ec.color.tint").unwrap();
+    let spec = aurora_effects::find("ec.color.tint").unwrap();
     let mut next = p.next_id;
-    let mut g = effectcraft_effects::instantiate(spec, &mut Ids(&mut next), "Tint", [50.0, 50.0]);
+    let mut g = aurora_effects::instantiate(spec, &mut Ids(&mut next), "Tint", [50.0, 50.0]);
     p.next_id = next;
     if let Some(pr) = g.prop_mut("white") {
         pr.value = Value::Color([0.0, 1.0, 0.0, 1.0]);
@@ -185,14 +185,14 @@ fn render_cached(p: &Project, cid: ItemId, t: Tick, cache: Option<&crate::LayerC
 }
 
 /// [`add_effect`] for a 200×100 layer.
-fn add_effect_200(p: &mut Project, l: &mut effectcraft_project::Layer, id: &str, vals: &[(&str, Value)]) {
+fn add_effect_200(p: &mut Project, l: &mut aurora_project::Layer, id: &str, vals: &[(&str, Value)]) {
     add_effect(p, l, id, [200.0, 100.0], vals);
 }
 
-fn add_effect(p: &mut Project, l: &mut effectcraft_project::Layer, id: &str, size: [f64; 2], vals: &[(&str, Value)]) {
-    let spec = effectcraft_effects::find(id).unwrap();
+fn add_effect(p: &mut Project, l: &mut aurora_project::Layer, id: &str, size: [f64; 2], vals: &[(&str, Value)]) {
+    let spec = aurora_effects::find(id).unwrap();
     let mut next = p.next_id;
-    let mut g = effectcraft_effects::instantiate(spec, &mut Ids(&mut next), spec.name, size);
+    let mut g = aurora_effects::instantiate(spec, &mut Ids(&mut next), spec.name, size);
     p.next_id = next;
     for (k, v) in vals {
         g.prop_mut(k).unwrap().value = v.clone();

@@ -1,8 +1,8 @@
-//! The EffectCraft egui frontend (swappable): docking panels, the Composition viewer, the
+//! The Aurora egui frontend (swappable): docking panels, the Composition viewer, the
 //! Timeline with property twirl-downs and keyframes, Effect Controls, Effects & Presets, Preview,
 //! Info, Character/Paragraph/Align, menus, dialogs and the control channel.
 //!
-//! Everything goes through `effectcraft_engine::Session::execute` (or `menus::invoke` for
+//! Everything goes through `aurora_engine::Session::execute` (or `menus::invoke` for
 //! frontend-only commands) so every gesture is also available to agents.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
@@ -30,12 +30,12 @@ pub mod widgets;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender};
 
+use aurora_engine::Session;
+use aurora_engine::project::ItemId;
+use aurora_engine::render::RenderOpts;
+use aurora_engine::time::Tick;
 pub use control::ControlRequest;
 use dock::PanelKind;
-use effectcraft_engine::Session;
-use effectcraft_engine::project::ItemId;
-use effectcraft_engine::render::RenderOpts;
-use effectcraft_engine::time::Tick;
 use frames::{FrameKey, Frames, RenderSource};
 use serde_json::json;
 use state::UiState;
@@ -43,7 +43,7 @@ use theme::Tokens;
 
 const SCREENSHOT_TIMEOUT_S: f64 = 4.0;
 /// Seconds without a project change before paused prefetch resumes (see
-/// [`EffectcraftApp::editing`]).
+/// [`AuroraApp::editing`]).
 const EDIT_QUIET: f64 = 0.3;
 
 /// Modal dialogs.
@@ -75,7 +75,7 @@ pub enum Dialog {
     TrackTarget,
     /// Tracker ▸ Apply (Transform / Stabilize): Apply Dimensions.
     TrackApply,
-    /// Crash recovery: offer the latest auto-save (`EffectcraftApp::recovery`).
+    /// Crash recovery: offer the latest auto-save (`AuroraApp::recovery`).
     Recovery,
     /// Composition/Layer Marker (double-click a marker).
     Marker,
@@ -125,8 +125,8 @@ pub struct Playback {
     pub waiting: bool,
     pub fps: f64,
     /// The Preview panel shortcut that started this preview and what it plays.
-    pub shortcut: effectcraft_engine::preview::PreviewShortcut,
-    pub plan: Option<effectcraft_engine::preview::PreviewPlan>,
+    pub shortcut: aurora_engine::preview::PreviewShortcut,
+    pub plan: Option<aurora_engine::preview::PreviewPlan>,
     /// Cache Before Playback: rendering the range before the clock starts.
     pub caching: bool,
     /// Resolution override while playing (pixel step), `None` = the viewer's.
@@ -181,7 +181,7 @@ impl Playback {
     }
 }
 
-pub struct EffectcraftApp {
+pub struct AuroraApp {
     pub session: Session,
     pub ui: UiState,
     pub tokens: Tokens,
@@ -215,18 +215,18 @@ pub struct EffectcraftApp {
     /// The frames the other (passive) Composition viewers show, by viewer id.
     pub(crate) passive_tex: std::collections::HashMap<u32, (FrameKey, panels::viewers::PassiveTexture)>,
     /// The last GPU frame shown: its egui texture id (registered with egui-wgpu), key and texture.
-    pub(crate) viewer_native: Option<(egui::TextureId, FrameKey, Arc<effectcraft_gpu::DisplayFrame>)>,
+    pub(crate) viewer_native: Option<(egui::TextureId, FrameKey, Arc<aurora_gpu::DisplayFrame>)>,
     /// The texture the viewer draws and its frame key (CPU or GPU frame).
     pub(crate) viewer_shown: Option<(egui::TextureId, FrameKey)>,
     /// Last displayed image (Info panel colour, eyedroppers, histograms). GPU frames fill it on
-    /// demand ([`EffectcraftApp::viewer_pixels`]).
+    /// demand ([`AuroraApp::viewer_pixels`]).
     pub(crate) viewer_image: Option<Arc<egui::ColorImage>>,
     /// wasm32: an asynchronous readback of a GPU viewer frame (key asked for, result).
     viewer_readback: (Option<FrameKey>, Arc<std::sync::Mutex<Option<(FrameKey, Arc<egui::ColorImage>)>>>),
     /// egui-wgpu's device, once the first frame arrives (desktop and WebGPU).
     pub(crate) wgpu: Option<eframe::egui_wgpu::RenderState>,
     /// The GPU compositor on that device (None: no usable adapter → CPU only).
-    pub(crate) gpu: Option<effectcraft_gpu::Gpu>,
+    pub(crate) gpu: Option<aurora_gpu::Gpu>,
     gpu_checked: bool,
     gpu_failures: Option<gpu_failure::GpuFailureBridge>,
     gpu_failure_applied: Option<bool>,
@@ -249,7 +249,7 @@ pub struct EffectcraftApp {
     /// Settings revision applied to the theme, tooltips and caches.
     applied_prefs: Option<u64>,
     /// A previous run that didn't exit cleanly (shown by `Dialog::Recovery`).
-    pub recovery: Option<effectcraft_engine::autosave::Recovery>,
+    pub recovery: Option<aurora_engine::autosave::Recovery>,
     /// Docked groups laid out last frame: (active panel, group rect) — `~` maximizes the one
     /// under the pointer.
     pub(crate) dock_rects: Vec<(PanelKind, egui::Rect)>,
@@ -262,12 +262,12 @@ pub struct EffectcraftApp {
     /// Home ▸ Templates: thumbnail textures by template id (None = not renderable).
     pub(crate) template_thumbs: std::collections::HashMap<String, Option<egui::TextureHandle>>,
     /// Home ▸ Templates: the gallery, and the user template files it was listed from.
-    pub(crate) template_list: Option<(Vec<String>, Vec<effectcraft_engine::templates::TemplateInfo>)>,
+    pub(crate) template_list: Option<(Vec<String>, Vec<aurora_engine::templates::TemplateInfo>)>,
 }
 
-impl EffectcraftApp {
+impl AuroraApp {
     pub fn new(session: Session) -> Self {
-        EffectcraftApp {
+        AuroraApp {
             session,
             ui: UiState::default(),
             tokens: Tokens::for_kind(Default::default()),
@@ -328,14 +328,14 @@ impl EffectcraftApp {
     fn with_ui_commands(mut self) -> Self {
         let cmds = menus::UI_COMMANDS
             .iter()
-            .map(|c| effectcraft_engine::shortcuts::UiCommand { id: c.id.into(), label: c.label.into(), shortcut: c.shortcut.map(str::to_string) })
+            .map(|c| aurora_engine::shortcuts::UiCommand { id: c.id.into(), label: c.label.into(), shortcut: c.shortcut.map(str::to_string) })
             .collect();
         self.session.set_ui_commands(cmds);
         self
     }
 
     /// Show the crash-recovery dialog for a previous run that didn't exit cleanly.
-    pub fn offer_recovery(&mut self, r: effectcraft_engine::autosave::Recovery) {
+    pub fn offer_recovery(&mut self, r: aurora_engine::autosave::Recovery) {
         if r.autosave.is_some() {
             self.recovery = Some(r);
             self.dialog = Some(Dialog::Recovery);
@@ -472,7 +472,7 @@ impl EffectcraftApp {
     fn gpu_display(&self) -> bool {
         let v = &self.session.state.viewer;
         cfg!(target_arch = "wasm32")
-            && v.channel == effectcraft_engine::viewer::Channel::Rgb
+            && v.channel == aurora_engine::viewer::Channel::Rgb
             && v.exposure == 0.0
             && self.session.state.region_of_interest.is_none()
             && self.ui.viewer.extended.is_none()
@@ -545,7 +545,7 @@ impl EffectcraftApp {
         let Some(rs) = frame.wgpu_render_state() else { return };
         // Backend validation can panic on shader compilation even when device creation
         // succeeded. Keep the document and the egui renderer, and use CPU compositing.
-        let gpu = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| effectcraft_gpu::Gpu::new(&rs.adapter, rs.device.clone(), rs.queue.clone())));
+        let gpu = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| aurora_gpu::Gpu::new(&rs.adapter, rs.device.clone(), rs.queue.clone())));
         match gpu {
             Ok(Ok(g)) => {
                 if let Some(bridge) = &self.gpu_failures {
@@ -554,7 +554,7 @@ impl EffectcraftApp {
                         return;
                     }
                 }
-                log::info!("GPU compositor: {}", effectcraft_engine::render::Accelerator::name(&g));
+                log::info!("GPU compositor: {}", aurora_engine::render::Accelerator::name(&g));
                 self.session.accel = Some(Arc::new(g.clone()));
                 self.gpu = Some(g);
                 self.wgpu = Some(rs.clone());
@@ -574,7 +574,7 @@ impl EffectcraftApp {
 
     /// The GPU compositor's adapter, when the viewer has one.
     pub fn gpu_adapter(&self) -> Option<String> {
-        self.gpu.as_ref().map(effectcraft_engine::render::Accelerator::name)
+        self.gpu.as_ref().map(aurora_engine::render::Accelerator::name)
     }
 
     /// The size of the viewer frame's texture (CPU frames; fitted to the GPU's texture limit).
@@ -722,7 +722,7 @@ impl EffectcraftApp {
             draft: self.ui.viewer.fast_preview || draft,
             view: self.session.view_camera(comp),
             roi,
-            backend: effectcraft_engine::render::Backend::Auto,
+            backend: aurora_engine::render::Backend::Auto,
             nested_switches: self.session.prefs.general.switches_affect_nested_comps,
             draft_shadows: self.session.prefs.three_d.realtime_shadows,
             proxy: Default::default(),
@@ -750,10 +750,10 @@ impl EffectcraftApp {
 
     /// Start the preview of a Preview panel shortcut (its range, play-from, rate, skip,
     /// resolution, loop, caching, full screen and include options).
-    pub fn play_with(&mut self, now: f64, sc: effectcraft_engine::preview::PreviewShortcut) {
+    pub fn play_with(&mut self, now: f64, sc: aurora_engine::preview::PreviewShortcut) {
         let Some(c) = self.session.active_comp_arc() else { return };
         let preset = self.session.prefs.preview.get(sc).clone();
-        let plan = effectcraft_engine::preview::plan(&preset, &c, self.session.time());
+        let plan = aurora_engine::preview::plan(&preset, &c, self.session.time());
         let fr = c.frame_rate;
         if plan.video {
             self.session.set_time(fr.tick_of(plan.first));
@@ -796,7 +796,7 @@ impl EffectcraftApp {
         let (Some(pl), Some(cid)) = (self.playback.plan, self.session.active_comp_id()) else { return false };
         let Some(c) = self.session.project.comp(cid) else { return false };
         // A preview at another frame rate plays slower or faster than real time: silent.
-        pl.audio && (pl.fps - c.frame_rate.as_f64()).abs() <= 0.01 && effectcraft_engine::render::audio::comp_has_audio(&self.session.project, cid)
+        pl.audio && (pl.fps - c.frame_rate.as_f64()).abs() <= 0.01 && aurora_engine::render::audio::comp_has_audio(&self.session.project, cid)
     }
 
     /// Start audio preview from comp time `t` when [`Self::audio_plays`] and an output device
@@ -819,7 +819,7 @@ impl EffectcraftApp {
     /// Audio scrubbing: play the frame of `comp` at `t` (see [`audio::AudioScrub`]), opening the
     /// output on first use. Silent comps and missing devices do nothing.
     pub fn scrub_audio(&mut self, comp: ItemId, t: Tick, now: f64) {
-        if self.playback.playing || !effectcraft_engine::render::audio::comp_has_audio(&self.session.project, comp) {
+        if self.playback.playing || !aurora_engine::render::audio::comp_has_audio(&self.session.project, comp) {
             return;
         }
         if self.scrub.is_none() {
@@ -870,7 +870,7 @@ impl EffectcraftApp {
     /// A preview shortcut pressed: start its preview, or stop the running one. While Cache
     /// Before Playback is still rendering, "If caching, play cached frames" plays what is
     /// cached so far instead of stopping.
-    pub fn toggle_play_with(&mut self, now: f64, sc: effectcraft_engine::preview::PreviewShortcut) {
+    pub fn toggle_play_with(&mut self, now: f64, sc: aurora_engine::preview::PreviewShortcut) {
         if !self.playback.playing {
             self.play_with(now, sc);
             return;
@@ -1140,7 +1140,7 @@ impl EffectcraftApp {
     /// Composition ▸ Preview ▸ Cache Frames When Idle: after a second without input or edits,
     /// render the work area's frames (from the current time on, then from its start) in the
     /// background, a few at a time, until it is cached or the RAM preview budget is full.
-    fn cache_when_idle(&mut self, ctx: &egui::Context, comp: &effectcraft_engine::project::Comp, series: &FrameKey, now: f64, (wa, wb): (i64, i64)) {
+    fn cache_when_idle(&mut self, ctx: &egui::Context, comp: &aurora_engine::project::Comp, series: &FrameKey, now: f64, (wa, wb): (i64, i64)) {
         let active = ctx.input(|i| !i.events.is_empty() || i.pointer.any_down() || i.pointer.is_moving());
         if active || self.last_activity.1 != self.session.revision {
             self.last_activity = (now, self.session.revision);
@@ -1185,12 +1185,12 @@ impl EffectcraftApp {
     /// at least one).
     /// The frames of `plan` from `cur` to its end, or as many as fit in the RAM preview, are
     /// cached: sound can play from `cur` in real time.
-    fn cached_ahead(&self, plan: &effectcraft_engine::preview::PreviewPlan, series: &FrameKey, cur: i64, fit: i64) -> bool {
+    fn cached_ahead(&self, plan: &aurora_engine::preview::PreviewPlan, series: &FrameKey, cur: i64, fit: i64) -> bool {
         let cached = self.frames.cached_frames(series);
         (0..fit).map_while(|k| plan.frame_after(cur, k)).take_while(|f| *f >= cur).all(|f| cached.binary_search(&f).is_ok())
     }
 
-    fn frames_that_fit(&self, comp: &effectcraft_engine::project::Comp, scale: f64) -> i64 {
+    fn frames_that_fit(&self, comp: &aurora_engine::project::Comp, scale: f64) -> i64 {
         let side = |n: u32| (n as f64 * scale).ceil().max(1.0);
         let frame = side(comp.width) * side(comp.height) * 4.0;
         ((self.frames.budget() as f64 * 0.9 / frame) as i64).max(1)
@@ -1338,20 +1338,20 @@ impl EffectcraftApp {
     fn handle_events(&mut self, ctx: &egui::Context) {
         for ev in self.session.drain_events() {
             match ev {
-                effectcraft_engine::Event::OpenComp(c) => {
+                aurora_engine::Event::OpenComp(c) => {
                     panels::viewers::on_open_comp(self, c);
                     self.ui.timeline.pps = None;
                 }
-                effectcraft_engine::Event::Toast { message, .. } => self.toast = Some((message, ctx.input(|i| i.time))),
-                effectcraft_engine::Event::OpenUrl(url) => ctx.open_url(egui::OpenUrl::new_tab(url)),
+                aurora_engine::Event::Toast { message, .. } => self.toast = Some((message, ctx.input(|i| i.time))),
+                aurora_engine::Event::OpenUrl(url) => ctx.open_url(egui::OpenUrl::new_tab(url)),
                 // Frames are keyed by content: an edit keeps those of comps it doesn't touch.
-                effectcraft_engine::Event::ProjectChanged { .. } => {}
-                effectcraft_engine::Event::Frontend { command, params } => {
+                aurora_engine::Event::ProjectChanged { .. } => {}
+                aurora_engine::Event::Frontend { command, params } => {
                     if let Err(e) = crate::menus::frontend(self, ctx, &command, params) {
                         self.ui.status = e;
                     }
                 }
-                effectcraft_engine::Event::PurgeCaches => self.frames.clear(),
+                aurora_engine::Event::PurgeCaches => self.frames.clear(),
             }
         }
     }
@@ -1476,7 +1476,7 @@ impl EffectcraftApp {
     }
 }
 
-impl EffectcraftApp {
+impl AuroraApp {
     /// Auto-save a dirty project when the interval has passed (Settings ▸ Project ▸ Auto-Save).
     fn tick_autosave(&mut self, ctx: &egui::Context) {
         let now = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_secs_f64()).unwrap_or(0.0);
@@ -1512,7 +1512,7 @@ impl EffectcraftApp {
     }
 }
 
-impl eframe::App for EffectcraftApp {
+impl eframe::App for AuroraApp {
     fn on_exit(&mut self) {
         // Clean exit: no crash recovery next launch.
         self.session.end_recovery();
@@ -1589,7 +1589,7 @@ impl eframe::App for EffectcraftApp {
 }
 
 /// Advance playback with the viewer's scale (called by the viewer panel each frame).
-pub(crate) fn tick_playback(app: &mut EffectcraftApp, ctx: &egui::Context, scale: f64) {
+pub(crate) fn tick_playback(app: &mut AuroraApp, ctx: &egui::Context, scale: f64) {
     app.advance_playback(ctx, scale);
 }
 
@@ -1606,7 +1606,7 @@ mod gpu_failure_tests {
         let project = session.project.clone();
         let revision = session.revision;
         let prefs = serde_json::to_value(&session.prefs).unwrap();
-        let mut app = EffectcraftApp::new(session);
+        let mut app = AuroraApp::new(session);
         let ctx = egui::Context::default();
         let bridge = gpu_failure::GpuFailureBridge::new(&ctx);
         app.set_gpu_failure_bridge(bridge.clone());

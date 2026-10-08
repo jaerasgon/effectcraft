@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Aurora MSI (WiX Toolset v5: `dotnet tool install -g wix`). Built by package.ps1:
+
+    wix build aurora.wxs -arch x64 -d Version=1.2.3 -d BinDir=... -d IconPath=... -o out.msi
+
+  Per-machine install into Program Files, a Start Menu shortcut, `.pcraft` owned by Aurora,
+  and Aurora offered under "Open with" for PSD/PSB and the image formats it reads (without
+  taking over the user's default app for them).
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="Aurora"
+      Manufacturer="Jaerasgon"
+      Version="$(var.Version)"
+      UpgradeCode="AACA8593-C6ED-40A8-BA6C-CB325D8529F9"
+      Scope="perMachine"
+      Compressed="yes"
+      Language="1033">
+    <SummaryInformation Description="Aurora motion graphics and visual effects" Manufacturer="Jaerasgon" />
+    <!-- Same-version upgrades let successive pre-releases of one X.Y.Z replace each other
+         (MSI versions are numeric, so 1.2.3-rc.1 and 1.2.3-rc.2 are both 1.2.3). -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes"
+        DowngradeErrorMessage="A newer version of Aurora is already installed." />
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <Icon Id="AuroraIcon.ico" SourceFile="$(var.IconPath)" />
+    <Property Id="ARPPRODUCTICON" Value="AuroraIcon.ico" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/jaerasgon/effectcraft" />
+    <Property Id="ARPURLUPDATEINFO" Value="https://github.com/jaerasgon/effectcraft" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/jaerasgon/effectcraft/issues" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="Aurora" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder" />
+
+    <Feature Id="Main" Title="Aurora" Level="1">
+      <ComponentGroupRef Id="AuroraFiles" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <ComponentGroup Id="AuroraFiles" Directory="INSTALLFOLDER">
+      <Component Id="AuroraApp" Guid="BA719860-95FE-4154-B265-47006B8E9083">
+        <File Id="AuroraExe" Source="$(var.BinDir)\aurora.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProgramMenuFolder" Name="Aurora"
+              Description="Aurora motion graphics and visual effects" WorkingDirectory="INSTALLFOLDER" Advertise="yes"
+              Icon="AuroraIcon.ico" IconIndex="0" />
+        </File>
+
+        <RegistryValue Root="HKLM" Key="Software\Microsoft\Windows\CurrentVersion\App Paths\aurora.exe" Value="[#AuroraExe]" Type="string" />
+      </Component>
+
+      <Component Id="AuroraCli">
+        <File Id="AuroraCliExe" Source="$(var.BinDir)\aurora-cli.exe" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+</Wix>

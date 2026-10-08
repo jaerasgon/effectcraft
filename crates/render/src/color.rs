@@ -16,9 +16,9 @@
 //!   and is encoded back to the working space when the comp is done (so precomps hand encoded
 //!   pixels to their parent). Without a working space the sRGB curve is used.
 
-use effectcraft_color::{ColorSpace, Conversion};
-use effectcraft_project::{HdrMode, ProjectSettings};
-use effectcraft_raster::Image;
+use aurora_color::{ColorSpace, Conversion};
+use aurora_project::{HdrMode, ProjectSettings};
+use aurora_raster::Image;
 use rayon::prelude::*;
 
 /// The colour pipeline of a project (see the module docs).
@@ -238,7 +238,7 @@ pub fn compand(v: f32) -> f32 {
 /// Extended Reinhard tone mapping of luminance with white at `W` (linear light).
 pub fn tone_map(c: [f32; 3]) -> [f32; 3] {
     const W: f32 = 4.0;
-    let l = effectcraft_color::luminance(c[0], c[1], c[2]);
+    let l = aurora_color::luminance(c[0], c[1], c[2]);
     if l <= 0.0 {
         return c;
     }

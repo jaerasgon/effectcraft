@@ -430,6 +430,530 @@ dependencies = [
 ]
 
 [[package]]
+name = "aurora"
+version = "0.4.0"
+dependencies = [
+ "aurora-engine",
+ "aurora-host",
+ "aurora-ui-egui",
+ "cpal",
+ "eframe",
+ "egui",
+ "log",
+ "muda",
+ "objc2 0.6.4",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "rfd",
+ "serde_json",
+ "winit",
+ "winresource",
+]
+
+[[package]]
+name = "aurora-automation"
+version = "0.4.0"
+dependencies = [
+ "aurora-engine",
+ "aurora-host",
+ "aurora-script",
+ "image",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-av1enc"
+version = "0.4.0"
+dependencies = [
+ "filmcraft-av1",
+]
+
+[[package]]
+name = "aurora-cli"
+version = "0.4.0"
+dependencies = [
+ "aurora-automation",
+ "aurora-engine",
+ "aurora-gpu",
+ "aurora-host",
+ "aurora-render",
+ "aurora-time",
+ "aurora-ui-egui",
+ "cpu-time",
+ "image",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-color"
+version = "0.4.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "aurora-effects"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-project",
+ "aurora-raster",
+ "aurora-segment",
+ "aurora-track",
+ "log",
+ "rayon",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-engine"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-effects",
+ "aurora-geom",
+ "aurora-interchange",
+ "aurora-keyframe",
+ "aurora-lottie",
+ "aurora-model",
+ "aurora-path",
+ "aurora-pdf",
+ "aurora-project",
+ "aurora-psd",
+ "aurora-raster",
+ "aurora-render",
+ "aurora-segment",
+ "aurora-svg",
+ "aurora-text",
+ "aurora-time",
+ "aurora-track",
+ "exr",
+ "image",
+ "kurbo",
+ "log",
+ "rayon",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
+name = "aurora-export"
+version = "0.4.0"
+dependencies = [
+ "aurora-av1enc",
+ "aurora-color",
+ "aurora-hevcenc",
+ "aurora-keyframe",
+ "aurora-media",
+ "aurora-opusenc",
+ "aurora-project",
+ "aurora-raster",
+ "aurora-render",
+ "aurora-time",
+ "aurora-vp9enc",
+ "filmcraft-aac",
+ "filmcraft-h264enc",
+ "filmcraft-isobmff",
+ "filmcraft-opus",
+ "filmcraft-prores",
+ "filmcraft-vp9",
+ "gif",
+ "image",
+ "log",
+ "rayon",
+ "thiserror 2.0.21",
+ "web-time",
+]
+
+[[package]]
+name = "aurora-expr"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-effects",
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-path",
+ "aurora-project",
+ "aurora-render",
+ "aurora-text",
+ "aurora-time",
+ "boa_engine",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-geom"
+version = "0.4.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "aurora-gpu"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-effects",
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-project",
+ "aurora-raster",
+ "aurora-render",
+ "aurora-text",
+ "aurora-time",
+ "bytemuck",
+ "js-sys",
+ "log",
+ "pollster 0.4.0",
+ "wasm-bindgen",
+ "web-time",
+ "wgpu",
+]
+
+[[package]]
+name = "aurora-hevcenc"
+version = "0.4.0"
+dependencies = [
+ "filmcraft-hevc",
+]
+
+[[package]]
+name = "aurora-host"
+version = "0.4.0"
+dependencies = [
+ "aurora-engine",
+ "aurora-export",
+ "aurora-expr",
+ "aurora-interchange",
+ "aurora-media",
+ "aurora-pdf",
+ "aurora-plugin",
+ "aurora-project",
+ "aurora-psd",
+ "aurora-raster",
+ "aurora-script",
+ "aurora-svg",
+ "aurora-time",
+ "image",
+ "rayon",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-interchange"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-keyframe",
+ "aurora-project",
+ "aurora-time",
+ "filmcraft-color",
+ "filmcraft-geom",
+ "filmcraft-interchange",
+ "filmcraft-media",
+ "filmcraft-project",
+ "filmcraft-time",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-keyframe"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-geom",
+ "aurora-time",
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-lottie"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-effects",
+ "aurora-keyframe",
+ "aurora-path",
+ "aurora-project",
+ "aurora-render",
+ "aurora-text",
+ "aurora-time",
+ "kurbo",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-media"
+version = "0.4.0"
+dependencies = [
+ "aurora-model",
+ "aurora-pdf",
+ "aurora-project",
+ "aurora-psd",
+ "aurora-raster",
+ "aurora-render",
+ "aurora-svg",
+ "aurora-time",
+ "exr",
+ "filmcraft-codecs",
+ "filmcraft-color",
+ "filmcraft-frame",
+ "filmcraft-media",
+ "filmcraft-time",
+ "image",
+ "log",
+ "rayon",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-model"
+version = "0.4.0"
+dependencies = [
+ "aurora-geom",
+ "image",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-opusenc"
+version = "0.4.0"
+dependencies = [
+ "filmcraft-opus",
+]
+
+[[package]]
+name = "aurora-path"
+version = "0.4.0"
+dependencies = [
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-raster",
+ "kurbo",
+ "linesweeper",
+ "tiny-skia",
+]
+
+[[package]]
+name = "aurora-pdf"
+version = "0.4.0"
+dependencies = [
+ "aurora-raster",
+ "aurora-svg",
+ "aurora-text",
+ "image",
+ "kurbo",
+ "miniz_oxide 0.8.9",
+ "skrifa",
+ "zune-jpeg",
+]
+
+[[package]]
+name = "aurora-plugin"
+version = "0.4.0"
+dependencies = [
+ "aurora-effects",
+ "aurora-keyframe",
+ "aurora-project",
+ "aurora-raster",
+ "serde_json",
+ "wasmi",
+]
+
+[[package]]
+name = "aurora-project"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-time",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "aurora-psd"
+version = "0.4.0"
+dependencies = [
+ "miniz_oxide 0.8.9",
+]
+
+[[package]]
+name = "aurora-raster"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-geom",
+ "rayon",
+]
+
+[[package]]
+name = "aurora-render"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-effects",
+ "aurora-geom",
+ "aurora-keyframe",
+ "aurora-model",
+ "aurora-path",
+ "aurora-project",
+ "aurora-raster",
+ "aurora-text",
+ "aurora-time",
+ "kurbo",
+ "log",
+ "lz4_flex",
+ "rayon",
+ "serde",
+ "web-time",
+]
+
+[[package]]
+name = "aurora-script"
+version = "0.4.0"
+dependencies = [
+ "aurora-engine",
+ "aurora-expr",
+ "aurora-keyframe",
+ "aurora-path",
+ "aurora-project",
+ "aurora-render",
+ "aurora-time",
+ "boa_engine",
+ "serde_json",
+]
+
+[[package]]
+name = "aurora-segment"
+version = "0.4.0"
+dependencies = [
+ "miniz_oxide 0.8.9",
+ "ndarray",
+ "rayon",
+]
+
+[[package]]
+name = "aurora-svg"
+version = "0.4.0"
+dependencies = [
+ "aurora-geom",
+ "aurora-path",
+ "aurora-raster",
+ "kurbo",
+ "rayon",
+ "roxmltree",
+]
+
+[[package]]
+name = "aurora-text"
+version = "0.4.0"
+dependencies = [
+ "aurora-keyframe",
+ "harfrust",
+ "kurbo",
+ "skrifa",
+ "unicode-bidi",
+ "unicode-linebreak",
+]
+
+[[package]]
+name = "aurora-time"
+version = "0.4.0"
+dependencies = [
+ "proptest",
+ "serde",
+]
+
+[[package]]
+name = "aurora-track"
+version = "0.4.0"
+dependencies = [
+ "aurora-raster",
+ "aurora-segment",
+ "rayon",
+ "serde",
+ "serde_json",
+ "web-time",
+]
+
+[[package]]
+name = "aurora-ui-egui"
+version = "0.4.0"
+dependencies = [
+ "aurora-color",
+ "aurora-engine",
+ "aurora-geom",
+ "aurora-gpu",
+ "aurora-host",
+ "aurora-keyframe",
+ "aurora-path",
+ "aurora-project",
+ "aurora-render",
+ "aurora-text",
+ "aurora-time",
+ "eframe",
+ "egui",
+ "egui_kittest",
+ "image",
+ "kurbo",
+ "log",
+ "pollster 0.4.0",
+ "rayon",
+ "serde",
+ "serde_json",
+ "sys-locale",
+ "toml",
+ "web-time",
+]
+
+[[package]]
+name = "aurora-vp9enc"
+version = "0.4.0"
+
+[[package]]
+name = "aurora-web"
+version = "0.4.0"
+dependencies = [
+ "aurora-engine",
+ "aurora-export",
+ "aurora-expr",
+ "aurora-gpu",
+ "aurora-host",
+ "aurora-media",
+ "aurora-ui-egui",
+ "eframe",
+ "egui",
+ "js-sys",
+ "log",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1130,530 +1654,6 @@ checksum = "0656a7530b9e2841ee7a5f983965bdd9840c32f4012f759cfd44b912cced6b34"
 dependencies = [
  "bytemuck",
  "emath",
-]
-
-[[package]]
-name = "effectcraft"
-version = "0.4.0"
-dependencies = [
- "cpal",
- "effectcraft-engine",
- "effectcraft-host",
- "effectcraft-ui-egui",
- "eframe",
- "egui",
- "log",
- "muda",
- "objc2 0.6.4",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "rfd",
- "serde_json",
- "winit",
- "winresource",
-]
-
-[[package]]
-name = "effectcraft-automation"
-version = "0.4.0"
-dependencies = [
- "effectcraft-engine",
- "effectcraft-host",
- "effectcraft-script",
- "image",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-av1enc"
-version = "0.4.0"
-dependencies = [
- "filmcraft-av1",
-]
-
-[[package]]
-name = "effectcraft-cli"
-version = "0.4.0"
-dependencies = [
- "cpu-time",
- "effectcraft-automation",
- "effectcraft-engine",
- "effectcraft-gpu",
- "effectcraft-host",
- "effectcraft-render",
- "effectcraft-time",
- "effectcraft-ui-egui",
- "image",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-color"
-version = "0.4.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "effectcraft-effects"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-project",
- "effectcraft-raster",
- "effectcraft-segment",
- "effectcraft-track",
- "log",
- "rayon",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-engine"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-effects",
- "effectcraft-geom",
- "effectcraft-interchange",
- "effectcraft-keyframe",
- "effectcraft-lottie",
- "effectcraft-model",
- "effectcraft-path",
- "effectcraft-pdf",
- "effectcraft-project",
- "effectcraft-psd",
- "effectcraft-raster",
- "effectcraft-render",
- "effectcraft-segment",
- "effectcraft-svg",
- "effectcraft-text",
- "effectcraft-time",
- "effectcraft-track",
- "exr",
- "image",
- "kurbo",
- "log",
- "rayon",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
- "web-time",
-]
-
-[[package]]
-name = "effectcraft-export"
-version = "0.4.0"
-dependencies = [
- "effectcraft-av1enc",
- "effectcraft-color",
- "effectcraft-hevcenc",
- "effectcraft-keyframe",
- "effectcraft-media",
- "effectcraft-opusenc",
- "effectcraft-project",
- "effectcraft-raster",
- "effectcraft-render",
- "effectcraft-time",
- "effectcraft-vp9enc",
- "filmcraft-aac",
- "filmcraft-h264enc",
- "filmcraft-isobmff",
- "filmcraft-opus",
- "filmcraft-prores",
- "filmcraft-vp9",
- "gif",
- "image",
- "log",
- "rayon",
- "thiserror 2.0.21",
- "web-time",
-]
-
-[[package]]
-name = "effectcraft-expr"
-version = "0.4.0"
-dependencies = [
- "boa_engine",
- "effectcraft-color",
- "effectcraft-effects",
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-path",
- "effectcraft-project",
- "effectcraft-render",
- "effectcraft-text",
- "effectcraft-time",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-geom"
-version = "0.4.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "effectcraft-gpu"
-version = "0.4.0"
-dependencies = [
- "bytemuck",
- "effectcraft-color",
- "effectcraft-effects",
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-project",
- "effectcraft-raster",
- "effectcraft-render",
- "effectcraft-text",
- "effectcraft-time",
- "js-sys",
- "log",
- "pollster 0.4.0",
- "wasm-bindgen",
- "web-time",
- "wgpu",
-]
-
-[[package]]
-name = "effectcraft-hevcenc"
-version = "0.4.0"
-dependencies = [
- "filmcraft-hevc",
-]
-
-[[package]]
-name = "effectcraft-host"
-version = "0.4.0"
-dependencies = [
- "effectcraft-engine",
- "effectcraft-export",
- "effectcraft-expr",
- "effectcraft-interchange",
- "effectcraft-media",
- "effectcraft-pdf",
- "effectcraft-plugin",
- "effectcraft-project",
- "effectcraft-psd",
- "effectcraft-raster",
- "effectcraft-script",
- "effectcraft-svg",
- "effectcraft-time",
- "image",
- "rayon",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-interchange"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-keyframe",
- "effectcraft-project",
- "effectcraft-time",
- "filmcraft-color",
- "filmcraft-geom",
- "filmcraft-interchange",
- "filmcraft-media",
- "filmcraft-project",
- "filmcraft-time",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-keyframe"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-geom",
- "effectcraft-time",
- "proptest",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-lottie"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-effects",
- "effectcraft-keyframe",
- "effectcraft-path",
- "effectcraft-project",
- "effectcraft-render",
- "effectcraft-text",
- "effectcraft-time",
- "kurbo",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-media"
-version = "0.4.0"
-dependencies = [
- "effectcraft-model",
- "effectcraft-pdf",
- "effectcraft-project",
- "effectcraft-psd",
- "effectcraft-raster",
- "effectcraft-render",
- "effectcraft-svg",
- "effectcraft-time",
- "exr",
- "filmcraft-codecs",
- "filmcraft-color",
- "filmcraft-frame",
- "filmcraft-media",
- "filmcraft-time",
- "image",
- "log",
- "rayon",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-model"
-version = "0.4.0"
-dependencies = [
- "effectcraft-geom",
- "image",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-opusenc"
-version = "0.4.0"
-dependencies = [
- "filmcraft-opus",
-]
-
-[[package]]
-name = "effectcraft-path"
-version = "0.4.0"
-dependencies = [
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-raster",
- "kurbo",
- "linesweeper",
- "tiny-skia",
-]
-
-[[package]]
-name = "effectcraft-pdf"
-version = "0.4.0"
-dependencies = [
- "effectcraft-raster",
- "effectcraft-svg",
- "effectcraft-text",
- "image",
- "kurbo",
- "miniz_oxide 0.8.9",
- "skrifa",
- "zune-jpeg",
-]
-
-[[package]]
-name = "effectcraft-plugin"
-version = "0.4.0"
-dependencies = [
- "effectcraft-effects",
- "effectcraft-keyframe",
- "effectcraft-project",
- "effectcraft-raster",
- "serde_json",
- "wasmi",
-]
-
-[[package]]
-name = "effectcraft-project"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-time",
- "serde",
- "serde_json",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "effectcraft-psd"
-version = "0.4.0"
-dependencies = [
- "miniz_oxide 0.8.9",
-]
-
-[[package]]
-name = "effectcraft-raster"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-geom",
- "rayon",
-]
-
-[[package]]
-name = "effectcraft-render"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-effects",
- "effectcraft-geom",
- "effectcraft-keyframe",
- "effectcraft-model",
- "effectcraft-path",
- "effectcraft-project",
- "effectcraft-raster",
- "effectcraft-text",
- "effectcraft-time",
- "kurbo",
- "log",
- "lz4_flex",
- "rayon",
- "serde",
- "web-time",
-]
-
-[[package]]
-name = "effectcraft-script"
-version = "0.4.0"
-dependencies = [
- "boa_engine",
- "effectcraft-engine",
- "effectcraft-expr",
- "effectcraft-keyframe",
- "effectcraft-path",
- "effectcraft-project",
- "effectcraft-render",
- "effectcraft-time",
- "serde_json",
-]
-
-[[package]]
-name = "effectcraft-segment"
-version = "0.4.0"
-dependencies = [
- "miniz_oxide 0.8.9",
- "ndarray",
- "rayon",
-]
-
-[[package]]
-name = "effectcraft-svg"
-version = "0.4.0"
-dependencies = [
- "effectcraft-geom",
- "effectcraft-path",
- "effectcraft-raster",
- "kurbo",
- "rayon",
- "roxmltree",
-]
-
-[[package]]
-name = "effectcraft-text"
-version = "0.4.0"
-dependencies = [
- "effectcraft-keyframe",
- "harfrust",
- "kurbo",
- "skrifa",
- "unicode-bidi",
- "unicode-linebreak",
-]
-
-[[package]]
-name = "effectcraft-time"
-version = "0.4.0"
-dependencies = [
- "proptest",
- "serde",
-]
-
-[[package]]
-name = "effectcraft-track"
-version = "0.4.0"
-dependencies = [
- "effectcraft-raster",
- "effectcraft-segment",
- "rayon",
- "serde",
- "serde_json",
- "web-time",
-]
-
-[[package]]
-name = "effectcraft-ui-egui"
-version = "0.4.0"
-dependencies = [
- "effectcraft-color",
- "effectcraft-engine",
- "effectcraft-geom",
- "effectcraft-gpu",
- "effectcraft-host",
- "effectcraft-keyframe",
- "effectcraft-path",
- "effectcraft-project",
- "effectcraft-render",
- "effectcraft-text",
- "effectcraft-time",
- "eframe",
- "egui",
- "egui_kittest",
- "image",
- "kurbo",
- "log",
- "pollster 0.4.0",
- "rayon",
- "serde",
- "serde_json",
- "sys-locale",
- "toml",
- "web-time",
-]
-
-[[package]]
-name = "effectcraft-vp9enc"
-version = "0.4.0"
-
-[[package]]
-name = "effectcraft-web"
-version = "0.4.0"
-dependencies = [
- "effectcraft-engine",
- "effectcraft-export",
- "effectcraft-expr",
- "effectcraft-gpu",
- "effectcraft-host",
- "effectcraft-media",
- "effectcraft-ui-egui",
- "eframe",
- "egui",
- "js-sys",
- "log",
- "serde",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
 ]
 
 [[package]]

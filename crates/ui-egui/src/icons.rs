@@ -638,12 +638,12 @@ pub fn keyframe(
     painter: &Painter,
     center: Pos2,
     size: f32,
-    left: effectcraft_engine::keyframe::KeyHalf,
-    right: effectcraft_engine::keyframe::KeyHalf,
+    left: aurora_engine::keyframe::KeyHalf,
+    right: aurora_engine::keyframe::KeyHalf,
     fill: Color32,
     outline: Color32,
 ) {
-    use effectcraft_engine::keyframe::KeyHalf as H;
+    use aurora_engine::keyframe::KeyHalf as H;
     let r = size / 2.0;
     let half = |pts: Vec<Pos2>| {
         painter.add(PathShape::convex_polygon(pts, fill, Stroke::new(1.0, outline)));

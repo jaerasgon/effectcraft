@@ -1,12 +1,12 @@
-# Releasing EffectCraft
+# Releasing Aurora
 
 Every push to the `release` branch runs [`.github/workflows/release.yml`](../.github/workflows/release.yml).
 It builds signed installers for macOS, Windows, Linux and the web, then creates or updates a
-**draft** GitHub Release named `EffectCraft v<version>`. Nobody sees a draft until a maintainer
+**draft** GitHub Release named `Aurora v<version>`. Nobody sees a draft until a maintainer
 publishes it.
 
-User-facing names say **EffectCraft**. Files, binaries and ids stay lowercase
-(`effectcraft-<version>-<platform>-<arch>.<ext>`).
+User-facing names say **Aurora**. Files, binaries and ids stay lowercase
+(`aurora-<version>-<platform>-<arch>.<ext>`).
 
 ## Cutting a release
 
@@ -18,17 +18,17 @@ User-facing names say **EffectCraft**. Files, binaries and ids stay lowercase
    cargo xtask version set 0.4.0       # or 0.4.0-rc.1; updates Cargo.toml and Cargo.lock
    ```
 
-   Open a PR titled `Release: EffectCraft v0.4.0` with that change (`Cargo.toml` and our crates
+   Open a PR titled `Release: Aurora v0.4.0` with that change (`Cargo.toml` and our crates
    in `Cargo.lock` only) and merge it.
 2. **Check the gate.** Run `cargo xtask ci` on `main` (it runs clippy and the tests in release
    mode, as CI does), and check that `main`'s CI is green on every platform.
 3. **Push `main` to `release`** (a fast-forward): `git push origin main:release`. The `release`
    branch is protected; only maintainers can push to it. The workflow starts by itself.
 4. **Wait for the draft.** When every job is green (macOS notarization is the slow part), the
-   Releases page has a draft `EffectCraft v0.4.0`, tagged `v0.4.0` on the pushed commit, with
+   Releases page has a draft `Aurora v0.4.0`, tagged `v0.4.0` on the pushed commit, with
    every artifact and `SHA256SUMS.txt`. Its notes are generated from the merged PRs.
 5. **Check it.** Download an installer or two, check them against `SHA256SUMS.txt`, and run
-   `effectcraft --version` / `effectcraft-cli --version`. Read the job summaries: a `::warning::`
+   `aurora --version` / `aurora-cli --version`. Read the job summaries: a `::warning::`
    means a signing secret was missing and that artifact is unsigned.
 6. **Publish** the draft in the GitHub UI (or `gh release edit v0.4.0 --draft=false --latest`),
    with a short *Highlights* section above the generated notes. Publishing creates the `v0.4.0`
@@ -49,19 +49,19 @@ the dialog.
 
 | Platform | Artifacts | Built on |
 |---|---|---|
-| macOS 11+ (universal: Apple silicon and Intel) | `effectcraft-<v>-macos-universal.dmg`, `effectcraft-cli-<v>-macos-universal.zip` | `macos-15` |
-| Windows 10+ x64 | `effectcraft-<v>-windows-x64.msi`, `effectcraft-<v>-windows-x64-portable.zip` | `windows-latest` |
-| Windows 10+ x86 (32-bit) | `effectcraft-<v>-windows-x86.msi`, `effectcraft-<v>-windows-x86-portable.zip` | `windows-latest` |
-| Windows 11 ARM64 | `effectcraft-<v>-windows-arm64.msi`, `effectcraft-<v>-windows-arm64-portable.zip` | cross-compiled on `windows-latest` |
-| Linux x86_64 | `effectcraft-<v>-linux-x86_64.{AppImage,deb,rpm,tar.gz}` | `ubuntu-22.04` |
-| Linux aarch64 | `effectcraft-<v>-linux-aarch64.{AppImage,deb,rpm,tar.gz}` | `ubuntu-22.04-arm` |
-| Web | `effectcraft-web-<v>.zip` (a static site; see [web.md](web.md)) | `ubuntu-latest` |
+| macOS 11+ (universal: Apple silicon and Intel) | `aurora-<v>-macos-universal.dmg`, `aurora-cli-<v>-macos-universal.zip` | `macos-15` |
+| Windows 10+ x64 | `aurora-<v>-windows-x64.msi`, `aurora-<v>-windows-x64-portable.zip` | `windows-latest` |
+| Windows 10+ x86 (32-bit) | `aurora-<v>-windows-x86.msi`, `aurora-<v>-windows-x86-portable.zip` | `windows-latest` |
+| Windows 11 ARM64 | `aurora-<v>-windows-arm64.msi`, `aurora-<v>-windows-arm64-portable.zip` | cross-compiled on `windows-latest` |
+| Linux x86_64 | `aurora-<v>-linux-x86_64.{AppImage,deb,rpm,tar.gz}` | `ubuntu-22.04` |
+| Linux aarch64 | `aurora-<v>-linux-aarch64.{AppImage,deb,rpm,tar.gz}` | `ubuntu-22.04-arm` |
+| Web | `aurora-web-<v>.zip` (a static site; see [web.md](web.md)) | `ubuntu-latest` |
 
 The ARM64 MSI is installed and run on ARM64 hardware by
 [`windows-arm64.yml`](../.github/workflows/windows-arm64.yml).
 
-Every binary reports its version: `effectcraft --version`, `effectcraft-cli --version` and
-*Help › About EffectCraft*.
+Every binary reports its version: `aurora --version`, `aurora-cli --version` and
+*Help › About Aurora*.
 
 ### Linux: the glibc baseline
 

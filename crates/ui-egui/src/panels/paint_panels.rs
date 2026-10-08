@@ -3,15 +3,15 @@
 //! Both edit the session's paint options through `paint.options` / `paint.brushPreset`, so
 //! agents see and set exactly what the panels show.
 
-use effectcraft_engine::effects::paint::{BRUSH_PRESETS, CHANNELS, DURATIONS, ERASE_MODES, MODES};
+use aurora_engine::effects::paint::{BRUSH_PRESETS, CHANNELS, DURATIONS, ERASE_MODES, MODES};
 use egui::{Align2, Color32, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::{Value, json};
 
 use crate::state::Tool;
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
-fn set(app: &mut EffectcraftApp, v: Value) {
+fn set(app: &mut AuroraApp, v: Value) {
     if let Err(e) = app.session.execute("paint.options", v) {
         app.ui.status = e.to_string();
     }
@@ -20,7 +20,7 @@ fn set(app: &mut EffectcraftApp, v: Value) {
 /// A label + hot number row; returns the new value when changed.
 #[allow(clippy::too_many_arguments)]
 fn number(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     x: f32,
@@ -42,7 +42,7 @@ fn number(
 
 #[allow(clippy::too_many_arguments)]
 fn popup_row(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     x: f32,
@@ -69,7 +69,7 @@ fn rgb(c: [f64; 4]) -> [f32; 3] {
     [c[0] as f32, c[1] as f32, c[2] as f32]
 }
 
-pub fn paint(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn paint(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     let o = app.session.state.paint.clone();
@@ -274,7 +274,7 @@ fn tip_preview(p: &egui::Painter, r: Rect, diameter: f64, angle: f64, roundness:
     }
 }
 
-pub fn brushes(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn brushes(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter().with_clip_rect(rect);
     let o = app.session.state.paint.clone();

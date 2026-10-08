@@ -10,7 +10,7 @@
 //!
 //! wasm32 has no threads: jobs wait in the same priority queue and [`Frames::pump`] hands them
 //! to a [`RemoteFrames`] (the browser's frame worker, a second engine instance fed with project
-//! diffs, `effectcraft_engine::remote`) or, without one, renders them on the UI thread between
+//! diffs, `aurora_engine::remote`) or, without one, renders them on the UI thread between
 //! egui frames, within a time budget.
 //!
 //! With the disk cache on (Settings ▸ Media & Disk Cache), every CPU-rendered frame is also
@@ -27,11 +27,11 @@ use std::collections::{BTreeSet, HashMap, HashSet, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use effectcraft_engine::project::{Comp, ItemId, ItemKind, LayerSource, Node, Project, PropGroup};
-use effectcraft_engine::render::disk_cache::{self, DiskCache};
-use effectcraft_engine::render::{ExprHost, FootageSource, LayerCache, RenderOpts, Renderer};
-use effectcraft_engine::time::Tick;
-use effectcraft_gpu::{DisplayFrame, Gpu};
+use aurora_engine::project::{Comp, ItemId, ItemKind, LayerSource, Node, Project, PropGroup};
+use aurora_engine::render::disk_cache::{self, DiskCache};
+use aurora_engine::render::{ExprHost, FootageSource, LayerCache, RenderOpts, Renderer};
+use aurora_engine::time::Tick;
+use aurora_gpu::{DisplayFrame, Gpu};
 use rayon::prelude::*;
 
 /// Comp identities (and the project snapshots behind them) the RAM preview keeps frames of.
@@ -200,7 +200,7 @@ pub struct RenderSource {
     /// desktop: Show Channel / exposure / region-of-interest drawing read the CPU frame texture,
     /// so GPU frames are read back (the compositing still runs on the GPU). On in the browser
     /// while the viewer draws plainly, because there frames can't be read back synchronously
-    /// (`EffectcraftApp::gpu_display`).
+    /// (`AuroraApp::gpu_display`).
     pub gpu_display: bool,
     /// The persistent disk cache, when enabled.
     pub disk: Option<Arc<DiskCache>>,
@@ -347,7 +347,7 @@ pub fn comp_has_effects(project: &Project, comp: ItemId) -> bool {
         let Some(c) = p.comp(comp) else { return false };
         c.layers.iter().any(|l| {
             l.switches.effects && l.effects().is_some_and(|fx| fx.groups().any(|g| g.enabled))
-                || depth < 16 && matches!(l.source, effectcraft_engine::project::LayerSource::Comp { item } if walk(p, item, depth + 1))
+                || depth < 16 && matches!(l.source, aurora_engine::project::LayerSource::Comp { item } if walk(p, item, depth + 1))
         })
     }
     walk(project, comp, 0)
@@ -412,7 +412,7 @@ impl Default for Frames {
 
 /// Premultiplied f32 → egui premultiplied Color32 (alpha kept, so the viewer can show the
 /// transparency grid or the comp background colour underneath).
-pub fn to_color_image(img: &effectcraft_engine::render::Image) -> egui::ColorImage {
+pub fn to_color_image(img: &aurora_engine::render::Image) -> egui::ColorImage {
     let px: Vec<egui::Color32> = img
         .data
         .par_iter()
@@ -958,7 +958,7 @@ impl Worker {
         let mut r = Renderer::new(&job.src.project, job.src.footage.as_ref(), job.opts);
         r.expr = job.src.expr.as_deref();
         r.cache = Some(&job.src.layer_cache);
-        r.accel = Some(g as &dyn effectcraft_engine::render::Accelerator);
+        r.accel = Some(g as &dyn aurora_engine::render::Accelerator);
         r.active_accel()?;
         match g.within_memory(|| g.render_display(&r, job.comp, job.t)) {
             Ok(f) => f.map(|f| FrameImage::Gpu(Arc::new(f))),
@@ -978,7 +978,7 @@ impl Worker {
         // reported failure. The CPU retry must compute its own pixels from the snapshot.
         r.cache = gpu_allowed.then_some(job.src.layer_cache.as_ref());
         let gpu = job.src.gpu.as_ref().filter(|_| gpu_allowed);
-        r.accel = gpu.map(|g| g as &dyn effectcraft_engine::render::Accelerator);
+        r.accel = gpu.map(|g| g as &dyn aurora_engine::render::Accelerator);
         // The GPU leaves the frame in a texture for the viewer; otherwise (Software Only, no
         // adapter, or a frame the GPU cannot finish here) the CPU renders it.
         // Auto (Mercury GPU Acceleration) shows each comp on whichever compositor measured
@@ -1118,9 +1118,9 @@ mod tests {
     /// released, not left "in progress" forever, so the viewer can ask for it again (#106).
     #[test]
     fn a_frame_whose_render_panics_is_released() {
-        use effectcraft_engine::Session;
-        use effectcraft_engine::project::{Footage, FootageKind};
-        use effectcraft_engine::render::Image;
+        use aurora_engine::Session;
+        use aurora_engine::project::{Footage, FootageKind};
+        use aurora_engine::render::Image;
         use serde_json::json;
         use std::sync::atomic::{AtomicUsize, Ordering};
         #[derive(Default)]
@@ -1205,7 +1205,7 @@ mod tests {
 
     #[test]
     fn an_edit_keeps_the_frames_of_comps_it_does_not_touch() {
-        use effectcraft_engine::Session;
+        use aurora_engine::Session;
         use serde_json::json;
         let mut s = Session::default();
         let a = ItemId(s.execute("comp.new", json!({"name": "A", "width": 8, "height": 8, "duration": 1})).unwrap()["comp"].as_u64().unwrap());
@@ -1224,7 +1224,7 @@ mod tests {
 
     #[test]
     fn a_long_drag_keeps_a_bounded_number_of_states() {
-        use effectcraft_engine::Session;
+        use aurora_engine::Session;
         use serde_json::json;
         let mut s = Session::default();
         let a = ItemId(s.execute("comp.new", json!({"name": "A", "width": 8, "height": 8, "duration": 1})).unwrap()["comp"].as_u64().unwrap());
@@ -1245,7 +1245,7 @@ mod tests {
 
     #[test]
     fn an_identity_keeps_its_comps_so_an_edit_in_place_still_changes_it() {
-        use effectcraft_engine::Session;
+        use aurora_engine::Session;
         use serde_json::json;
         let mut s = Session::default();
         let a = ItemId(s.execute("comp.new", json!({"name": "A", "width": 8, "height": 8, "duration": 1})).unwrap()["comp"].as_u64().unwrap());
@@ -1264,7 +1264,7 @@ mod tests {
     /// or a comp it nests, keeps its frames, also when toggled back (#103).
     #[test]
     fn audio_lock_and_shy_switches_keep_the_frames() {
-        use effectcraft_engine::Session;
+        use aurora_engine::Session;
         use serde_json::json;
         let mut s = Session::default();
         let id = |v: serde_json::Value, k: &str| v[k].as_u64().unwrap();

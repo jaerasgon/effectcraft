@@ -2,14 +2,14 @@
 //! Illustrator and EPS footage → shape layer), Create Shapes from Text and Create Masks from
 //! Text (glyph outlines), and vector files imported as compositions (one layer per file layer).
 
-use effectcraft_keyframe::{Gradient, ShapePath, Value};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{Comp, ItemId, Layer, LayerSource, MaskMode, Project, PropGroup};
-use effectcraft_svg::{Affine, Doc, Geom, GradientKind, Node, Paint};
+use aurora_keyframe::{Gradient, ShapePath, Value};
+use aurora_project::build::{self, Ids};
+use aurora_project::{Comp, ItemId, Layer, LayerSource, MaskMode, Project, PropGroup};
+use aurora_svg::{Affine, Doc, Geom, GradientKind, Node, Paint};
 use kurbo::{BezPath, Point};
 
 fn shape_paths(ids: &mut Ids, path: &BezPath) -> Vec<PropGroup> {
-    effectcraft_path::from_kurbo(path)
+    aurora_path::from_kurbo(path)
         .into_iter()
         .enumerate()
         .map(|(i, sp)| {
@@ -31,7 +31,7 @@ fn axis_aligned(m: Affine) -> Option<(f64, f64, f64, f64)> {
     (c[1].abs() < 1e-9 && c[2].abs() < 1e-9 && c[0] > 0.0 && c[3] > 0.0).then_some((c[0], c[3], c[4], c[5]))
 }
 
-fn gradient_value(g: &effectcraft_svg::Gradient) -> Gradient {
+fn gradient_value(g: &aurora_svg::Gradient) -> Gradient {
     Gradient {
         colors: g.stops.iter().map(|(o, c)| (*o, [c[0] as f32, c[1] as f32, c[2] as f32, 1.0])).collect(),
         opacities: g.stops.iter().map(|(o, c)| (*o, c[3] as f32)).collect(),
@@ -39,7 +39,7 @@ fn gradient_value(g: &effectcraft_svg::Gradient) -> Gradient {
 }
 
 /// Gradient start/end points in shape-layer space (`m`: shape user space → layer space).
-fn gradient_points(g: &effectcraft_svg::Gradient, m: Affine, bbox: kurbo::Rect) -> (bool, [f64; 2], [f64; 2]) {
+fn gradient_points(g: &aurora_svg::Gradient, m: Affine, bbox: kurbo::Rect) -> (bool, [f64; 2], [f64; 2]) {
     let unit = if g.bbox_units { Affine::new([bbox.width(), 0.0, 0.0, bbox.height(), bbox.x0, bbox.y0]) } else { Affine::IDENTITY };
     let full = m * unit * g.transform;
     let p = |x: f64, y: f64| {
@@ -52,7 +52,7 @@ fn gradient_points(g: &effectcraft_svg::Gradient, m: Affine, bbox: kurbo::Rect) 
     }
 }
 
-fn shape_items(ids: &mut Ids, s: &effectcraft_svg::Shape, m: Affine) -> Vec<PropGroup> {
+fn shape_items(ids: &mut Ids, s: &aurora_svg::Shape, m: Affine) -> Vec<PropGroup> {
     use kurbo::Shape as _;
     let mut items = vec![];
     // Geometry: parametric when the transform keeps rectangles/ellipses axis-aligned.
@@ -102,7 +102,7 @@ fn shape_items(ids: &mut Ids, s: &effectcraft_svg::Shape, m: Affine) -> Vec<Prop
             }
         };
         set(&mut g, "opacity", Value::Scalar(s.fill_opacity * 100.0));
-        set(&mut g, "rule", Value::Enum(u32::from(s.fill_rule == effectcraft_svg::FillRule::EvenOdd)));
+        set(&mut g, "rule", Value::Enum(u32::from(s.fill_rule == aurora_svg::FillRule::EvenOdd)));
         items.push(g);
     }
     items
@@ -133,7 +133,7 @@ fn merge_item(ids: &mut Ids, mode: u32) -> Option<PropGroup> {
 /// with Merge Paths), the clip paths, and Merge Paths ▸ Intersect before its paint, so the fill
 /// is exactly the clipped area. Open stroked paths stay unclipped (an intersection would close
 /// them).
-fn clipped_items(ids: &mut Ids, s: &effectcraft_svg::Shape, m: Affine, clips: &[BezPath]) -> Vec<PropGroup> {
+fn clipped_items(ids: &mut Ids, s: &aurora_svg::Shape, m: Affine, clips: &[BezPath]) -> Vec<PropGroup> {
     let items = shape_items(ids, s, m);
     let path = s.geom.to_path();
     let closed = path.elements().iter().any(|e| matches!(e, kurbo::PathEl::ClosePath)) || s.fill.is_some();
@@ -176,7 +176,7 @@ pub fn svg_contents(ids: &mut Ids, doc: &Doc) -> Vec<PropGroup> {
                     let items = walk(ids, &g.children, gm, &inner_clips);
                     if !items.is_empty() {
                         let mut grp = group(ids, &g.name, items, g.opacity);
-                        if g.blend != effectcraft_svg::BlendMode::Normal {
+                        if g.blend != aurora_svg::BlendMode::Normal {
                             set(&mut grp, "blend", Value::Enum(blend_index(g.blend)));
                         }
                         out.push(grp);
@@ -202,9 +202,9 @@ pub fn svg_contents(ids: &mut Ids, doc: &Doc) -> Vec<PropGroup> {
 }
 
 /// The shape-layer Blend Mode index of an SVG / PDF blend mode.
-fn blend_index(b: effectcraft_svg::BlendMode) -> u32 {
-    use effectcraft_color::BlendMode as P;
-    use effectcraft_svg::BlendMode as S;
+fn blend_index(b: aurora_svg::BlendMode) -> u32 {
+    use aurora_color::BlendMode as P;
+    use aurora_svg::BlendMode as S;
     let p = match b {
         S::Normal => P::Normal,
         S::Multiply => P::Multiply,
@@ -243,7 +243,7 @@ pub fn vector_clip_masks(doc: &Doc) -> (Vec<BezPath>, Doc) {
             break;
         }
         match &mut g.children[0] {
-            Node::Group(sub) if sub.mask.is_none() && sub.blend == effectcraft_svg::BlendMode::Normal => g = sub,
+            Node::Group(sub) if sub.mask.is_none() && sub.blend == aurora_svg::BlendMode::Normal => g = sub,
             _ => break,
         }
     }
@@ -251,21 +251,21 @@ pub fn vector_clip_masks(doc: &Doc) -> (Vec<BezPath>, Doc) {
 }
 
 /// Whether footage is a vector file (SVG / PDF / AI / EPS).
-pub fn is_vector(f: &effectcraft_project::Footage) -> bool {
-    effectcraft_render::is_vector_footage(f) || f.path.to_ascii_lowercase().ends_with(".svg")
+pub fn is_vector(f: &aurora_project::Footage) -> bool {
+    aurora_render::is_vector_footage(f) || f.path.to_ascii_lowercase().ends_with(".svg")
 }
 
 /// The vector document of an SVG / PDF / AI / EPS file (`None` for other formats): page
 /// `page` of a PDF, restricted to one layer when `layer` names it.
-pub fn vector_doc(path: &str, bytes: &[u8], layer: Option<&effectcraft_project::SourceLayer>, page: u32) -> Option<Result<Doc, String>> {
-    if path.to_ascii_lowercase().ends_with(".svg") || effectcraft_svg::looks_like_svg(bytes) {
-        return Some(effectcraft_svg::parse(bytes).map_err(|e| format!("{path}: {e}")));
+pub fn vector_doc(path: &str, bytes: &[u8], layer: Option<&aurora_project::SourceLayer>, page: u32) -> Option<Result<Doc, String>> {
+    if path.to_ascii_lowercase().ends_with(".svg") || aurora_svg::looks_like_svg(bytes) {
+        return Some(aurora_svg::parse(bytes).map_err(|e| format!("{path}: {e}")));
     }
-    effectcraft_pdf::sniff(bytes)?;
+    aurora_pdf::sniff(bytes)?;
     Some(
-        effectcraft_pdf::parse_page(bytes, page as usize)
+        aurora_pdf::parse_page(bytes, page as usize)
             .map(|d| match layer {
-                Some(l) => effectcraft_pdf::layer_doc(&d, l.index as usize),
+                Some(l) => aurora_pdf::layer_doc(&d, l.index as usize),
                 None => d,
             })
             .map_err(|e| format!("{path}: {e}")),
@@ -281,19 +281,19 @@ pub fn import_vector_comp(
     bytes: &[u8],
     name: &str,
     page: u32,
-    rate: effectcraft_time::FrameRate,
-    duration: effectcraft_time::Tick,
+    rate: aurora_time::FrameRate,
+    duration: aurora_time::Tick,
 ) -> Result<(ItemId, ItemId, Vec<ItemId>), String> {
-    use effectcraft_color::Label;
-    use effectcraft_project::{AlphaMode, Footage, FootageKind, ItemKind, SourceLayer};
-    let doc = effectcraft_pdf::parse_page(bytes, page as usize).map_err(|e| format!("{path}: {e}"))?;
-    let codec = effectcraft_pdf::codec(path, bytes).unwrap_or("PDF");
+    use aurora_color::Label;
+    use aurora_project::{AlphaMode, Footage, FootageKind, ItemKind, SourceLayer};
+    let doc = aurora_pdf::parse_page(bytes, page as usize).map_err(|e| format!("{path}: {e}"))?;
+    let codec = aurora_pdf::codec(path, bytes).unwrap_or("PDF");
     let (w, h) = doc.pixel_size();
     let file = std::path::Path::new(path).file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
     let folder = proj.add_item(&format!("{name} Layers"), Label::Yellow, None, ItemKind::Folder);
     let mut comp = Comp::new(w, h, rate, duration);
     let mut items = vec![];
-    let names = effectcraft_pdf::layer_names(&doc);
+    let names = aurora_pdf::layer_names(&doc);
     for (i, lname) in names.iter().enumerate() {
         let f = Footage {
             path: path.to_string(),
@@ -358,7 +358,7 @@ pub struct VectorImage {
 
 /// The document's images, bottom first, and how many soft-masked groups it has.
 pub fn vector_images(doc: &Doc) -> (Vec<VectorImage>, usize) {
-    fn walk(g: &effectcraft_svg::Group, m: Affine, opacity: f64, clipped: bool, out: &mut Vec<VectorImage>, masks: &mut usize) {
+    fn walk(g: &aurora_svg::Group, m: Affine, opacity: f64, clipped: bool, out: &mut Vec<VectorImage>, masks: &mut usize) {
         let m = m * g.transform;
         let opacity = opacity * g.opacity;
         let clipped = clipped || !g.clip.is_empty() || g.mask.is_some();
@@ -393,7 +393,7 @@ pub fn vector_images(doc: &Doc) -> (Vec<VectorImage>, usize) {
 /// layers and image footage layers can stack in the document's order. One more segment than
 /// images.
 pub fn split_at_images(doc: &Doc) -> Vec<Doc> {
-    fn count(g: &effectcraft_svg::Group) -> usize {
+    fn count(g: &aurora_svg::Group) -> usize {
         g.children
             .iter()
             .map(|c| match c {
@@ -404,7 +404,7 @@ pub fn split_at_images(doc: &Doc) -> Vec<Doc> {
             .sum()
     }
     /// Keep the shapes between images `seg − 1` and `seg`; `seen` counts images passed.
-    fn prune(g: &effectcraft_svg::Group, seg: usize, seen: &mut usize) -> effectcraft_svg::Group {
+    fn prune(g: &aurora_svg::Group, seg: usize, seen: &mut usize) -> aurora_svg::Group {
         let mut out = g.clone();
         out.children = vec![];
         for c in &g.children {
@@ -479,7 +479,7 @@ pub fn shapes_from_vector(proj: &mut Project, comp: &Comp, src: &Layer, doc: &Do
     }
     let mut n = 0;
     for (k, clip) in clips.iter().enumerate() {
-        for sp in effectcraft_path::from_kurbo(clip) {
+        for sp in aurora_path::from_kurbo(clip) {
             n += 1;
             let mode = if k == 0 { MaskMode::Add } else { MaskMode::Intersect };
             let mk = build::mask(&mut ids, &format!("Mask {n}"), sp, mode, [255, 255, 0]);
@@ -496,9 +496,9 @@ pub fn shapes_from_vector(proj: &mut Project, comp: &Comp, src: &Layer, doc: &Do
 
 /// Layer ▸ Create ▸ Create Shapes from Text: one group per character with its outline, fill and
 /// stroke (as laid out at the comp time `ctx` was made for).
-pub fn shapes_from_text(proj: &mut Project, comp: &Comp, ctx_project: &Project, cid: ItemId, src: &Layer, time: effectcraft_time::Tick) -> Option<Layer> {
-    let ctx = effectcraft_render::EvalCtx::new(ctx_project, cid, comp, time);
-    let geom = effectcraft_render::text::text_geom(&ctx, src)?;
+pub fn shapes_from_text(proj: &mut Project, comp: &Comp, ctx_project: &Project, cid: ItemId, src: &Layer, time: aurora_time::Tick) -> Option<Layer> {
+    let ctx = aurora_render::EvalCtx::new(ctx_project, cid, comp, time);
+    let geom = aurora_render::text::text_geom(&ctx, src)?;
     let chars: Vec<char> = geom.doc.text.chars().filter(|c| !c.is_whitespace()).collect();
     let mut l = build::layer(proj, comp, &format!("{} Outlines", src.name), LayerSource::Shape, (0, 0), None);
     let mut groups = vec![];
@@ -535,15 +535,15 @@ pub fn shapes_from_text(proj: &mut Project, comp: &Comp, ctx_project: &Project, 
 }
 
 /// Glyph outlines of a text layer in comp space (for Create Masks from Text).
-pub fn text_outlines_in_comp(project: &Project, cid: ItemId, comp: &Comp, src: &Layer, time: effectcraft_time::Tick) -> Vec<ShapePath> {
-    let ctx = effectcraft_render::EvalCtx::new(project, cid, comp, time);
-    let Some(geom) = effectcraft_render::text::text_geom(&ctx, src) else { return vec![] };
+pub fn text_outlines_in_comp(project: &Project, cid: ItemId, comp: &Comp, src: &Layer, time: aurora_time::Tick) -> Vec<ShapePath> {
+    let ctx = aurora_render::EvalCtx::new(project, cid, comp, time);
+    let Some(geom) = aurora_render::text::text_geom(&ctx, src) else { return vec![] };
     let (m, _) = ctx.layer_to_comp(src);
     let mut out = vec![];
     for g in &geom.glyphs {
         let p = g.path();
-        let p = effectcraft_path::transform(std::slice::from_ref(&p), &m).remove(0);
-        out.extend(effectcraft_path::from_kurbo(&p));
+        let p = aurora_path::transform(std::slice::from_ref(&p), &m).remove(0);
+        out.extend(aurora_path::from_kurbo(&p));
     }
     out
 }

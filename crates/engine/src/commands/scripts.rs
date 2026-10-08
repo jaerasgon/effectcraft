@@ -19,7 +19,7 @@ use crate::{EngineError, Event, Result, Session, cmd, scriptui};
 pub const SCRIPTS_DIR: &str = "Scripts";
 pub const PANELS_DIR: &str = "Scripts/ScriptUI Panels";
 
-/// Sample scripts that ship with EffectCraft (original work): (file name, ScriptUI panel, code).
+/// Sample scripts that ship with Aurora (original work): (file name, ScriptUI panel, code).
 pub const SAMPLES: &[(&str, bool, &str)] = &[
     ("Create Null at Selected Layers.jsx", false, include_str!("../../scripts/Create Null at Selected Layers.jsx")),
     ("Rename Layers.jsx", false, include_str!("../../scripts/Rename Layers.jsx")),

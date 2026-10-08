@@ -14,18 +14,18 @@
 //! Every edit is a `prop.set` engine command (undoable; one drag = one undo step) and every
 //! handle registers an automation id.
 
-use effectcraft_engine::effects::{ColoramaPalette, OffsetCurve};
-use effectcraft_engine::geom::Mat3;
-use effectcraft_engine::keyframe::Value;
-use effectcraft_engine::project::{Layer, PropGroup};
-use effectcraft_engine::render::EvalCtx;
+use aurora_engine::effects::{ColoramaPalette, OffsetCurve};
+use aurora_engine::geom::Mat3;
+use aurora_engine::keyframe::Value;
+use aurora_engine::project::{Layer, PropGroup};
+use aurora_engine::render::EvalCtx;
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
 use super::effect_controls::gesture_key;
 use super::fx_widgets as fw;
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 type Actions = Vec<(String, serde_json::Value)>;
 
@@ -51,7 +51,7 @@ fn set_str(actions: &mut Actions, layer: &Layer, g: &PropGroup, id: &str, v: Str
 }
 
 /// Register automation ids for a curve's control points (`<prefix>.point.<i>`).
-fn register_points(app: &mut EffectcraftApp, prefix: &str, gr: Rect, pts: &[[f32; 2]]) {
+fn register_points(app: &mut AuroraApp, prefix: &str, gr: Rect, pts: &[[f32; 2]]) {
     for (i, q) in pts.iter().enumerate() {
         let s = pos2(gr.min.x + q[0] * gr.width(), gr.max.y - q[1] * gr.height());
         app.auto.add(&format!("{prefix}.point.{i}"), Rect::from_center_size(s, vec2(9.0, 9.0)), &format!("Point {}", i + 1));
@@ -59,17 +59,7 @@ fn register_points(app: &mut EffectcraftApp, prefix: &str, gr: Rect, pts: &[[f32
 }
 
 /// Small coloured tabs (`names[i]`, swatch `cols[i]`); returns the clicked one.
-fn tabs(
-    app: &mut EffectcraftApp,
-    ui: &mut egui::Ui,
-    p: &egui::Painter,
-    x0: f32,
-    cy: f32,
-    cur: usize,
-    names: &[&str],
-    cols: &[Color32],
-    id: &str,
-) -> Option<usize> {
+fn tabs(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, x0: f32, cy: f32, cur: usize, names: &[&str], cols: &[Color32], id: &str) -> Option<usize> {
     let t = app.tokens;
     let mut x = x0;
     let mut out = None;
@@ -104,7 +94,7 @@ fn tabs(
     out
 }
 
-fn reset_link(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, r: Rect, id: &str) -> bool {
+fn reset_link(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, r: Rect, id: &str) -> bool {
     let t = app.tokens;
     let resp = ui.interact(r, egui::Id::new(id), Sense::click());
     p.text(r.center(), Align2::CENTER_CENTER, "Reset", Tokens::ui(11.5), if resp.hovered() { t.hot_text } else { t.text_dim });
@@ -133,7 +123,7 @@ pub fn inline_height(effect: &str, path: &str, width: f32) -> f32 {
 /// Draw the editor of group `g` (at `path`) in `r`. `root`: the effect's group.
 #[allow(clippy::too_many_arguments)]
 pub fn inline_editor(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -157,7 +147,7 @@ const RGB_CURVES: [(&str, &str); 4] = [("master", "Master"), ("red", "Red"), ("g
 
 #[allow(clippy::too_many_arguments)]
 fn rgb_curves(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -264,7 +254,7 @@ fn hue_color(h: f32) -> Color32 {
 
 #[allow(clippy::too_many_arguments)]
 fn huesat_curves(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -436,7 +426,7 @@ fn wheel_point(c: Pos2, radius: f32, phase: f32) -> Pos2 {
 
 #[allow(clippy::too_many_arguments)]
 fn colorama_wheel(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -450,11 +440,11 @@ fn colorama_wheel(
     let euid = root.uid;
     let prefix = format!("effectControls.effect.{euid}.colorama");
     let preset = g.get("usePresetPalette").map(|pr| ectx.value(layer, pr).as_enum()).unwrap_or(0);
-    let custom = preset as usize == effectcraft_engine::effects::COLORAMA_PRESETS.len() - 1;
+    let custom = preset as usize == aurora_engine::effects::COLORAMA_PRESETS.len() - 1;
     let interp = g.get("interpolatePalette").is_none_or(|pr| ectx.value(layer, pr).as_bool());
     let pal = if custom { ColoramaPalette::parse(&str_value(layer, ectx, g, "palette")) } else { None }.unwrap_or_else(|| ColoramaPalette::preset(preset));
     let x0 = r.min.x + 38.0;
-    let label = if custom { "Custom palette" } else { effectcraft_engine::effects::COLORAMA_PRESETS.get(preset as usize).copied().unwrap_or("Preset") };
+    let label = if custom { "Custom palette" } else { aurora_engine::effects::COLORAMA_PRESETS.get(preset as usize).copied().unwrap_or("Preset") };
     p.text(pos2(x0, r.min.y + 15.0), Align2::LEFT_CENTER, format!("Output Cycle: {label}"), Tokens::ui(11.5), t.text_dim);
     let size = wheel_size(r.width());
     let c = pos2(x0 + size / 2.0, r.min.y + 30.0 + size / 2.0);
@@ -590,7 +580,7 @@ fn colorama_wheel(
         if !custom && let Some(pr) = g.get("usePresetPalette") {
             actions.push((
                 "prop.set".into(),
-                json!({"layer": layer.id.0, "prop": pr.uid, "value": effectcraft_engine::effects::COLORAMA_PRESETS.len() - 1, "merge": key}),
+                json!({"layer": layer.id.0, "prop": pr.uid, "value": aurora_engine::effects::COLORAMA_PRESETS.len() - 1, "merge": key}),
             ));
         }
         set_str(actions, layer, g, "palette", format_palette(&st), Some(key));
@@ -615,7 +605,7 @@ pub fn header_height(effect: &str, g: &PropGroup, width: f32) -> f32 {
 
 #[allow(clippy::too_many_arguments)]
 pub fn header_editor(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     p: &egui::Painter,
     layer: &Layer,
@@ -643,7 +633,7 @@ pub fn join_map(m: &[fw::CurvePoints; 3]) -> String {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn glow_map(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, layer: &Layer, g: &PropGroup, ectx: &EvalCtx, r: Rect, actions: &mut Actions) {
+fn glow_map(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, layer: &Layer, g: &PropGroup, ectx: &EvalCtx, r: Rect, actions: &mut Actions) {
     let t = app.tokens;
     let euid = g.uid;
     let prefix = format!("effectControls.effect.{euid}.glow");
@@ -654,7 +644,7 @@ fn glow_map(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, laye
     let (loops, phase, mid) = (num("colorLoops") as f32, (num("colorPhase") / 360.0) as f32, (num("abMidpoint") / 100.0) as f32);
     let map = split_map(&str_value(layer, ectx, g, "arbitraryMap"));
     let color_at = |l: f32| -> Color32 {
-        let tt = effectcraft_engine::effects::glow_ab_t(l, looping, loops, phase, mid);
+        let tt = aurora_engine::effects::glow_ab_t(l, looping, loops, phase, mid);
         if mode == 2 {
             Color32::from_rgb(
                 (map[0].eval(tt).clamp(0.0, 1.0) * 255.0) as u8,
@@ -755,16 +745,7 @@ pub fn add_pair(v: &[(f64, f64)]) -> (f64, f64) {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn reshape_buttons(
-    app: &mut EffectcraftApp,
-    ui: &mut egui::Ui,
-    p: &egui::Painter,
-    layer: &Layer,
-    g: &PropGroup,
-    ectx: &EvalCtx,
-    r: Rect,
-    actions: &mut Actions,
-) {
+fn reshape_buttons(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, layer: &Layer, g: &PropGroup, ectx: &EvalCtx, r: Rect, actions: &mut Actions) {
     let t = app.tokens;
     let euid = g.uid;
     let pairs = parse_pairs(&str_value(layer, ectx, g, "correspondencePoints"));
@@ -801,7 +782,7 @@ pub fn nearest_fraction(pts: &[[f64; 2]], closed: bool, q: [f64; 2]) -> f64 {
     if n < 2 {
         return 0.0;
     }
-    let total = effectcraft_engine::effects::util::poly_length(pts, closed).max(1e-9);
+    let total = aurora_engine::effects::util::poly_length(pts, closed).max(1e-9);
     let segs = if closed { n } else { n - 1 };
     let (mut best, mut best_s, mut acc) = (f64::INFINITY, 0.0, 0.0);
     for i in 0..segs {
@@ -825,7 +806,7 @@ pub fn nearest_fraction(pts: &[[f64; 2]], closed: bool, q: [f64; 2]) -> f64 {
 /// handles; dragging a handle slides it along its outline (one undo step per drag).
 #[allow(clippy::too_many_arguments)]
 pub fn reshape_overlay(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
     painter: &egui::Painter,
     map: &super::viewer::ViewerMap,
@@ -835,7 +816,7 @@ pub fn reshape_overlay(
     m: &Mat3,
     actions: &mut Actions,
 ) {
-    let shapes = effectcraft_engine::render::masks::shapes(ectx, layer);
+    let shapes = aurora_engine::render::masks::shapes(ectx, layer);
     let mask = |id: &str| -> Option<(Vec<[f64; 2]>, bool)> {
         let i = g.get(id).map(|pr| ectx.value(layer, pr).as_enum()).unwrap_or(0) as usize;
         let s = shapes.get(i.checked_sub(1)?)?;
@@ -854,8 +835,8 @@ pub fn reshape_overlay(
     outline(&src.0, src.1, ys);
     outline(&dst.0, dst.1, cs);
     let at = |pts: &[[f64; 2]], closed: bool, f: f64| {
-        let len = effectcraft_engine::effects::util::poly_length(pts, closed);
-        effectcraft_engine::effects::util::poly_point_at(pts, closed, f * len).0
+        let len = aurora_engine::effects::util::poly_length(pts, closed);
+        aurora_engine::effects::util::poly_point_at(pts, closed, f * len).0
     };
     let raw = match g.get("correspondencePoints").map(|pr| ectx.value(layer, pr)) {
         Some(Value::Str(s)) => s,

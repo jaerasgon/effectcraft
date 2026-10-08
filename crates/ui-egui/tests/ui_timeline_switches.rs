@@ -2,15 +2,15 @@
 //! dragging over other layers gives them all the state the first one got, in one undo step, as
 //! in After Effects (#227).
 
-use effectcraft_engine::Session;
-use effectcraft_engine::project::LayerId;
-use effectcraft_ui_egui::EffectcraftApp;
+use aurora_engine::Session;
+use aurora_engine::project::LayerId;
+use aurora_ui_egui::AuroraApp;
 use egui::{Event, Modifiers, Pos2, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
 /// Comp "Main" with solids A (top) to D (bottom); returns their ids top to bottom.
-fn harness() -> (Harness<'static, EffectcraftApp>, Vec<u64>) {
+fn harness() -> (Harness<'static, AuroraApp>, Vec<u64>) {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Main", "width": 320, "height": 180, "frameRate": 30, "duration": 4})).unwrap();
     let mut ids: Vec<u64> = ["D", "C", "B", "A"]
@@ -19,18 +19,18 @@ fn harness() -> (Harness<'static, EffectcraftApp>, Vec<u64>) {
         .collect();
     ids.reverse();
     s.execute("edit.deselectAll", json!({})).unwrap();
-    let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).build_eframe(|_| AuroraApp::new(s));
     h.run_steps(3);
     (h, ids)
 }
 
-fn rect(h: &Harness<'_, EffectcraftApp>, id: &str) -> Rect {
+fn rect(h: &Harness<'_, AuroraApp>, id: &str) -> Rect {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}")).clone();
     Rect::from_min_size(pos2(e.rect[0], e.rect[1]), vec2(e.rect[2], e.rect[3]))
 }
 
 /// Press on `from`, move to `to` in `steps`, release there.
-fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, steps: u32) {
+fn drag(h: &mut Harness<'_, AuroraApp>, from: Pos2, to: Pos2, steps: u32) {
     h.event(Event::PointerMoved(from));
     h.step();
     h.event(Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
@@ -44,23 +44,23 @@ fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, steps: u32) {
 }
 
 /// Each layer's switch, top to bottom.
-fn states(h: &Harness<'_, EffectcraftApp>, ids: &[u64], f: fn(&effectcraft_engine::project::Layer) -> bool) -> Vec<bool> {
+fn states(h: &Harness<'_, AuroraApp>, ids: &[u64], f: fn(&aurora_engine::project::Layer) -> bool) -> Vec<bool> {
     let comp = h.state().session.active_comp().unwrap();
     ids.iter().map(|id| f(comp.layer(LayerId(*id)).unwrap())).collect()
 }
 
-fn video(l: &effectcraft_engine::project::Layer) -> bool {
+fn video(l: &aurora_engine::project::Layer) -> bool {
     l.switches.video
 }
 
-fn motion_blur(l: &effectcraft_engine::project::Layer) -> bool {
+fn motion_blur(l: &aurora_engine::project::Layer) -> bool {
     l.switches.motion_blur
 }
 
 #[test]
 fn dragging_over_layer_switches_sets_them_all() {
     let (mut h, ids) = harness();
-    let eye = |h: &Harness<'_, EffectcraftApp>, i: usize| rect(h, &format!("timeline.layer.{}.video", ids[i])).center();
+    let eye = |h: &Harness<'_, AuroraApp>, i: usize| rect(h, &format!("timeline.layer.{}.video", ids[i])).center();
     let steps = h.state().session.history.undo.len();
 
     // From A's eye down to D's: all hidden, one undo step.
@@ -90,7 +90,7 @@ fn dragging_over_layer_switches_sets_them_all() {
     assert_eq!(states(&h, &ids, video), [false, true, false, true]);
 
     // The Switches column works the same (Motion Blur, from D up to B).
-    let mb = |h: &Harness<'_, EffectcraftApp>, i: usize| rect(h, &format!("timeline.layer.{}.switch.motionBlur", ids[i])).center();
+    let mb = |h: &Harness<'_, AuroraApp>, i: usize| rect(h, &format!("timeline.layer.{}.switch.motionBlur", ids[i])).center();
     let (d, b) = (mb(&h, 3), mb(&h, 1));
     drag(&mut h, d, b, 8);
     assert_eq!(states(&h, &ids, motion_blur), [false, true, true, true]);

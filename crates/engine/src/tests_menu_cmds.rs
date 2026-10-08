@@ -1,8 +1,8 @@
 //! Tests for the menu-parity command families (Layer / Edit / Animation / File / Composition /
 //! View menus), including undo.
 
-use effectcraft_keyframe::Value as KV;
-use effectcraft_project::{FrameBlend, ItemKind, MatteKind, Quality, Sampling};
+use aurora_keyframe::Value as KV;
+use aurora_project::{FrameBlend, ItemKind, MatteKind, Quality, Sampling};
 use serde_json::{Value, json};
 
 use crate::{EngineError, Event, Session};
@@ -17,12 +17,12 @@ fn solid(s: &mut Session, color: &str) -> u64 {
     s.execute("layer.newSolid", json!({"color": color, "width": 200, "height": 100})).unwrap()["layer"].as_u64().unwrap()
 }
 
-fn layer(s: &Session, id: u64) -> effectcraft_project::Layer {
-    s.active_comp().unwrap().layer(effectcraft_project::LayerId(id)).unwrap().clone()
+fn layer(s: &Session, id: u64) -> aurora_project::Layer {
+    s.active_comp().unwrap().layer(aurora_project::LayerId(id)).unwrap().clone()
 }
 
 fn tmp(name: &str) -> String {
-    let d = std::env::temp_dir().join(format!("effectcraft-menu-tests-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("aurora-menu-tests-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     d.join(name).to_string_lossy().to_string()
 }
@@ -100,7 +100,7 @@ fn transform_dialog_values_and_center_anchor() {
     assert!((after[0] - before[0] - 100.0).abs() < 1e-6 && (after[1] - before[1] - 50.0).abs() < 1e-6, "{before:?} → {after:?}");
 
     s.execute("layer.autoOrient", json!({"mode": "alongPath"})).unwrap();
-    assert_eq!(layer(&s, a).auto_orient, effectcraft_project::AutoOrient::AlongPath);
+    assert_eq!(layer(&s, a).auto_orient, aurora_project::AutoOrient::AlongPath);
 }
 
 #[test]
@@ -120,12 +120,12 @@ fn mask_menu_on_existing_masks() {
     s.execute("layer.mask.mode", json!({"mode": "Subtract", "mask": 2})).unwrap();
     s.execute("layer.mask.lock", json!({"mask": 1})).unwrap();
     let kinds: Vec<_> = masks(&s).iter().map(|m| m.kind.clone()).collect();
-    assert!(matches!(kinds[1], effectcraft_project::GroupKind::Mask { inverted: true, mode: effectcraft_project::MaskMode::Subtract, .. }));
-    assert!(matches!(kinds[0], effectcraft_project::GroupKind::Mask { locked: true, .. }));
+    assert!(matches!(kinds[1], aurora_project::GroupKind::Mask { inverted: true, mode: aurora_project::MaskMode::Subtract, .. }));
+    assert!(matches!(kinds[0], aurora_project::GroupKind::Mask { locked: true, .. }));
     s.execute("layer.mask.unlockAll", json!({})).unwrap();
-    assert!(matches!(masks(&s)[0].kind, effectcraft_project::GroupKind::Mask { locked: false, .. }));
+    assert!(matches!(masks(&s)[0].kind, aurora_project::GroupKind::Mask { locked: false, .. }));
     s.execute("layer.mask.lockOthers", json!({"mask": 1})).unwrap();
-    assert!(matches!(masks(&s)[1].kind, effectcraft_project::GroupKind::Mask { locked: true, .. }));
+    assert!(matches!(masks(&s)[1].kind, aurora_project::GroupKind::Mask { locked: true, .. }));
     s.execute("layer.mask.reset", json!({"mask": 1})).unwrap();
     assert_eq!(masks(&s)[0].get("opacity").unwrap().value.as_f64(), 100.0);
     s.execute("layer.mask.shape", json!({"mask": 1, "rect": [10, 10, 50, 40], "shape": "ellipse"})).unwrap();
@@ -267,12 +267,7 @@ fn label_group_purge_and_edit_original() {
     // A footage source that counts purges (the media pool drops its decoded frames).
     struct Counting(std::sync::atomic::AtomicUsize);
     impl crate::render::FootageSource for Counting {
-        fn frame(
-            &self,
-            _: effectcraft_project::ItemId,
-            _: &effectcraft_project::Footage,
-            _: effectcraft_time::Tick,
-        ) -> Option<std::sync::Arc<crate::render::Image>> {
+        fn frame(&self, _: aurora_project::ItemId, _: &aurora_project::Footage, _: aurora_time::Tick) -> Option<std::sync::Arc<crate::render::Image>> {
             None
         }
         fn purge(&self) {
@@ -381,26 +376,26 @@ fn sequence_layers() {
 fn file_menu_project_ops() {
     let mut s = comp();
     let f = s.execute("project.newFolder", json!({"name": "Stuff"})).unwrap()["item"].as_u64().unwrap();
-    assert!(s.project.item(effectcraft_project::ItemId(f)).unwrap().is_folder());
+    assert!(s.project.item(aurora_project::ItemId(f)).unwrap().is_folder());
     let p1 = s.execute("file.importPlaceholder", json!({"name": "Shot 1", "width": 320, "height": 240})).unwrap()["item"].as_u64().unwrap();
     let p2 = s.execute("file.importPlaceholder", json!({"name": "Unused"})).unwrap()["item"].as_u64().unwrap();
     s.execute("file.importSolid", json!({"name": "Grey"})).unwrap();
-    s.state.project_selection = vec![effectcraft_project::ItemId(p1)];
+    s.state.project_selection = vec![aurora_project::ItemId(p1)];
     let r = s.execute("file.newCompFromSelection", json!({})).unwrap();
-    let nc = effectcraft_project::ItemId(r["comps"][0].as_u64().unwrap());
+    let nc = aurora_project::ItemId(r["comps"][0].as_u64().unwrap());
     assert_eq!((s.project.comp(nc).unwrap().width, s.project.comp(nc).unwrap().layers.len()), (320, 1));
     // Missing footage = the placeholders.
     let miss = s.execute("file.findMissing", json!({"what": "footage"})).unwrap();
     assert_eq!(miss["items"].as_array().unwrap().len(), 2);
     assert!(s.execute("file.findMissing", json!({"what": "fonts"})).is_ok());
     // Interpretation.
-    s.state.project_selection = vec![effectcraft_project::ItemId(p1)];
+    s.state.project_selection = vec![aurora_project::ItemId(p1)];
     s.execute("file.interpretFootage", json!({"frameRate": 24, "alpha": "premultiplied", "loop": 3})).unwrap();
     s.execute("file.rememberInterpretation", json!({})).unwrap();
-    s.state.project_selection = vec![effectcraft_project::ItemId(p2)];
+    s.state.project_selection = vec![aurora_project::ItemId(p2)];
     s.execute("file.applyInterpretation", json!({})).unwrap();
-    match &s.project.item(effectcraft_project::ItemId(p2)).unwrap().kind {
-        ItemKind::Footage(f) => assert_eq!((f.alpha, f.loop_count, f.frame_rate.as_f64().round()), (effectcraft_project::AlphaMode::Premultiplied, 3, 24.0)),
+    match &s.project.item(aurora_project::ItemId(p2)).unwrap().kind {
+        ItemKind::Footage(f) => assert_eq!((f.alpha, f.loop_count, f.frame_rate.as_f64().round()), (aurora_project::AlphaMode::Premultiplied, 3, 24.0)),
         _ => panic!(),
     }
     // Remove Unused Footage drops the unused placeholder and the unused solid.
@@ -410,9 +405,9 @@ fn file_menu_project_ops() {
     s.execute("edit.undo", json!({})).unwrap();
     assert_eq!(s.project.items.len(), before);
     // Replace with a solid retargets the layer.
-    s.state.project_selection = vec![effectcraft_project::ItemId(p1)];
+    s.state.project_selection = vec![aurora_project::ItemId(p1)];
     s.execute("file.replaceWithSolid", json!({"color": "#336699"})).unwrap();
-    assert!(matches!(s.project.comp(nc).unwrap().layers[0].source, effectcraft_project::LayerSource::Solid { .. }));
+    assert!(matches!(s.project.comp(nc).unwrap().layers[0].source, aurora_project::LayerSource::Solid { .. }));
     // Reduce Project keeps only the selected comp and what it uses (+ folders of kept items).
     s.state.project_selection = vec![nc];
     s.execute("file.reduceProject", json!({})).unwrap();
@@ -434,7 +429,7 @@ fn consolidate_duplicate_footage() {
     // Give both the same file path.
     let mut p = (*s.project).clone();
     for id in [a, b] {
-        if let Some(ItemKind::Footage(ft)) = p.item_mut(effectcraft_project::ItemId(id)).map(|i| &mut i.kind) {
+        if let Some(ItemKind::Footage(ft)) = p.item_mut(aurora_project::ItemId(id)).map(|i| &mut i.kind) {
             ft.path = "/media/shot.mov".into();
         }
     }
@@ -520,8 +515,8 @@ fn frontend_commands_emit_events_and_stubs_are_disabled() {
     }
 }
 
-fn solid_of(s: &Session, l: u64) -> (u64, effectcraft_project::Solid, String) {
-    let effectcraft_project::LayerSource::Solid { item } = layer(s, l).source else { panic!("not a solid") };
+fn solid_of(s: &Session, l: u64) -> (u64, aurora_project::Solid, String) {
+    let aurora_project::LayerSource::Solid { item } = layer(s, l).source else { panic!("not a solid") };
     let it = s.project.item(item).unwrap();
     let ItemKind::Solid(so) = &it.kind else { panic!("not a solid item") };
     (item.0, so.clone(), it.name.clone())
@@ -546,8 +541,8 @@ fn layer_settings_edit_the_solid_or_give_the_layer_its_own() {
     assert_eq!((bs.color, bn.as_str(), layer(&s, b).name.as_str()), ([0.0, 0.0, 1.0], "Blue", "Blue"));
     assert_eq!(solid_of(&s, a).1.color, [1.0, 0.0, 0.0]);
     assert_eq!(
-        s.project.item(effectcraft_project::ItemId(bi)).unwrap().parent,
-        s.project.item(effectcraft_project::ItemId(solid_of(&s, a).0)).unwrap().parent,
+        s.project.item(aurora_project::ItemId(bi)).unwrap().parent,
+        s.project.item(aurora_project::ItemId(solid_of(&s, a).0)).unwrap().parent,
         "same folder"
     );
     // Affect all (the default) changes the shared solid in place; size and pixel aspect too.
@@ -709,24 +704,24 @@ fn precompose_takes_the_compositions_settings() {
     .unwrap();
     let a = solid(&mut s, "#ff0000");
     let r = s.execute("layer.precompose", json!({"layers": [a], "name": "Inner"})).unwrap();
-    let inner = s.project.comp(effectcraft_project::ItemId(r["comp"].as_u64().unwrap())).unwrap();
+    let inner = s.project.comp(aurora_project::ItemId(r["comp"].as_u64().unwrap())).unwrap();
     assert_eq!((inner.pixel_aspect, inner.shutter_angle, inner.motion_blur_samples), (2.0, 90.0, 8));
-    assert_eq!((inner.renderer, inner.background), (effectcraft_project::Renderer::Advanced3D, [0.2, 0.3, 0.4]));
+    assert_eq!((inner.renderer, inner.background), (aurora_project::Renderer::Advanced3D, [0.2, 0.3, 0.4]));
 }
 
 #[test]
 fn new_comp_from_selection_is_one_undo_step_with_the_dialog_options() {
     let mut s = Session::default();
     let still = |s: &mut Session, name: &str, w: u32, par: f64| {
-        let f = effectcraft_project::Footage {
-            kind: effectcraft_project::FootageKind::Still,
+        let f = aurora_project::Footage {
+            kind: aurora_project::FootageKind::Still,
             width: w,
             height: 100,
             pixel_aspect: par,
             has_video: true,
             ..Default::default()
         };
-        std::sync::Arc::make_mut(&mut s.project).add_item(name, effectcraft_color::Label::None, None, ItemKind::Footage(f))
+        std::sync::Arc::make_mut(&mut s.project).add_item(name, aurora_color::Label::None, None, ItemKind::Footage(f))
     };
     let a = still(&mut s, "a.png", 200, 1.0);
     let b = still(&mut s, "b.png", 300, 2.0);
@@ -736,7 +731,7 @@ fn new_comp_from_selection_is_one_undo_step_with_the_dialog_options() {
     let r = s.execute("file.newCompFromSelection", json!({"duration": 4})).unwrap();
     let comps: Vec<u64> = r["comps"].as_array().unwrap().iter().map(|v| v.as_u64().unwrap()).collect();
     assert_eq!(comps.len(), 2);
-    let cb = s.project.comp(effectcraft_project::ItemId(comps[1])).unwrap();
+    let cb = s.project.comp(aurora_project::ItemId(comps[1])).unwrap();
     assert_eq!((cb.width, cb.pixel_aspect, cb.duration.seconds()), (300, 2.0, 4.0));
     assert_eq!(s.history.undo.len(), steps + 1);
     s.execute("edit.undo", json!({})).unwrap();
@@ -749,7 +744,7 @@ fn new_comp_from_selection_is_one_undo_step_with_the_dialog_options() {
             json!({"single": true, "dimensionsFrom": 1, "duration": 3, "sequence": true, "overlap": true, "overlapDuration": 1, "addToRenderQueue": true}),
         )
         .unwrap();
-    let c = s.project.comp(effectcraft_project::ItemId(r["comps"][0].as_u64().unwrap())).unwrap();
+    let c = s.project.comp(aurora_project::ItemId(r["comps"][0].as_u64().unwrap())).unwrap();
     assert_eq!((c.width, c.pixel_aspect, c.duration.seconds()), (300, 2.0, 5.0));
     let names: Vec<&str> = c.layers.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["a.png", "b.png"], "first selected on top");
@@ -771,7 +766,7 @@ fn project_files_keep_their_format_warn_about_newer_versions_and_never_save_unre
     let path = tmp("Safe.ecproj");
     s.execute("file.saveAs", json!({"path": path})).unwrap();
     let saved = std::fs::read_to_string(&path).unwrap();
-    assert_eq!(effectcraft_project::saved_by(&saved).as_deref(), Some(effectcraft_project::APP_VERSION));
+    assert_eq!(aurora_project::saved_by(&saved).as_deref(), Some(aurora_project::APP_VERSION));
     // Save a Copy and Increment and Save keep an XML project XML.
     let copy = tmp("Copy.ecprojx");
     s.execute("file.saveCopy", json!({"path": copy})).unwrap();
@@ -782,10 +777,10 @@ fn project_files_keep_their_format_warn_about_newer_versions_and_never_save_unre
     assert!(inc.ends_with("Xml 2.ecprojx"), "{inc}");
     assert!(std::fs::read_to_string(&inc).unwrap().starts_with("<?xml"));
     let r = s.execute("file.open", json!({"path": inc})).unwrap();
-    assert_eq!(r["savedBy"], json!(effectcraft_project::APP_VERSION));
+    assert_eq!(r["savedBy"], json!(aurora_project::APP_VERSION));
     // A project from a newer version opens with a warning.
     let newer = tmp("Newer.ecproj");
-    std::fs::write(&newer, saved.replacen(effectcraft_project::APP_VERSION, "999.0.0", 1)).unwrap();
+    std::fs::write(&newer, saved.replacen(aurora_project::APP_VERSION, "999.0.0", 1)).unwrap();
     s.drain_events();
     let r = s.execute("file.open", json!({"path": newer})).unwrap();
     assert_eq!(r["savedBy"], json!("999.0.0"));
@@ -797,7 +792,7 @@ fn project_files_keep_their_format_warn_about_newer_versions_and_never_save_unre
     std::sync::Arc::make_mut(&mut s.project)
         .comp_mut(cid)
         .unwrap()
-        .layer_mut(effectcraft_project::LayerId(a))
+        .layer_mut(aurora_project::LayerId(a))
         .unwrap()
         .props
         .prop_mut("transform/opacity")
@@ -810,7 +805,7 @@ fn project_files_keep_their_format_warn_about_newer_versions_and_never_save_unre
     let junk = tmp("Junk.ecproj");
     std::fs::write(&junk, "{ not json").unwrap();
     let e = s.execute("file.open", json!({"path": junk})).unwrap_err().to_string();
-    assert!(e.contains("is not a project EffectCraft can open"), "{e}");
+    assert!(e.contains("is not a project Aurora can open"), "{e}");
 }
 
 #[test]
@@ -824,7 +819,7 @@ fn comp_settings_preserve_frame_rate_and_resolution() {
     // Pre-compose keeps them; one undo step clears them.
     let a = solid(&mut s, "#ff0000");
     let r = s.execute("layer.precompose", json!({"layers": [a], "name": "Inner"})).unwrap();
-    let inner = s.project.comp(effectcraft_project::ItemId(r["comp"].as_u64().unwrap())).unwrap();
+    let inner = s.project.comp(aurora_project::ItemId(r["comp"].as_u64().unwrap())).unwrap();
     assert!(inner.preserve_frame_rate && inner.preserve_resolution);
     // Undo Pre-compose and the solid; then one more step undoes the settings.
     s.execute("edit.undo", json!({})).unwrap();
@@ -838,15 +833,15 @@ fn comp_settings_preserve_frame_rate_and_resolution() {
 fn new_comp_from_selection_survives_hostile_sequence_numbers() {
     let mut s = Session::default();
     let still = |s: &mut Session, name: &str| {
-        let f = effectcraft_project::Footage {
-            kind: effectcraft_project::FootageKind::Still,
+        let f = aurora_project::Footage {
+            kind: aurora_project::FootageKind::Still,
             width: 64,
             height: 64,
             pixel_aspect: 1.0,
             has_video: true,
             ..Default::default()
         };
-        std::sync::Arc::make_mut(&mut s.project).add_item(name, effectcraft_color::Label::None, None, ItemKind::Footage(f))
+        std::sync::Arc::make_mut(&mut s.project).add_item(name, aurora_color::Label::None, None, ItemKind::Footage(f))
     };
     let a = still(&mut s, "a.png");
     let b = still(&mut s, "b.png");
@@ -858,8 +853,8 @@ fn new_comp_from_selection_survives_hostile_sequence_numbers() {
         let r = s
             .execute("file.newCompFromSelection", json!({"single": true, "sequence": true, "overlap": true, "overlapDuration": overlap, "duration": 2}))
             .unwrap();
-        let c = s.project.comp(effectcraft_project::ItemId(r["comps"][0].as_u64().unwrap())).unwrap();
-        assert!(c.duration.seconds() <= 6.0 && c.duration > effectcraft_time::Tick::ZERO, "{overlap}: {}", c.duration.seconds());
+        let c = s.project.comp(aurora_project::ItemId(r["comps"][0].as_u64().unwrap())).unwrap();
+        assert!(c.duration.seconds() <= 6.0 && c.duration > aurora_time::Tick::ZERO, "{overlap}: {}", c.duration.seconds());
     }
     s.state.project_selection = vec![a, b];
     assert!(s.execute("file.newCompFromSelection", json!({"single": true, "dimensionsFrom": 99})).is_err());
@@ -931,7 +926,7 @@ fn key_selection_toggles_and_skips_locked_layers_and_hold_restores_bezier() {
     s.execute("keys.toggleHold", json!({})).unwrap();
     s.execute("keys.toggleHold", json!({})).unwrap();
     let kf = layer(&s, a).props.prop("transform/opacity").unwrap().keys[1].clone();
-    assert_eq!(kf.out_interp, effectcraft_keyframe::Interp::Bezier);
+    assert_eq!(kf.out_interp, aurora_keyframe::Interp::Bezier);
     // Locked: its keys can't be selected.
     s.execute("layer.setSwitch", json!({"layers": [a], "switch": "lock", "value": true})).unwrap();
     s.execute("keys.select", json!({"keys": [k(0.0)]})).unwrap();
@@ -1087,7 +1082,7 @@ fn shape_contents_copy_cut_and_paste_between_shape_layers() {
     assert_eq!(s.active_comp().unwrap().layers.len(), n, "no new layer");
     let pasted = r["contents"][0].as_u64().unwrap();
     assert_ne!(pasted, rect);
-    assert_eq!(s.state.selected_props, vec![(effectcraft_project::LayerId(b), pasted)]);
+    assert_eq!(s.state.selected_props, vec![(aurora_project::LayerId(b), pasted)]);
     // Again, with the pasted item selected: above it, with a unique name.
     s.execute("edit.paste", json!({})).unwrap();
     assert_eq!(contents_names(&s, b), ["Rectangle 2", "Rectangle 1", "Polystar 1"]);
@@ -1125,7 +1120,7 @@ fn duplicate_with_shape_items_selected_duplicates_them_in_place() {
     assert_eq!(contents_names(&s, a), ["Rectangle 2", "Rectangle 1"]);
     assert_eq!(s.active_comp().unwrap().layers.len(), n, "no new layer");
     let copy = r["contents"][0].as_u64().unwrap();
-    assert_eq!(s.state.selected_props, vec![(effectcraft_project::LayerId(a), copy)]);
+    assert_eq!(s.state.selected_props, vec![(aurora_project::LayerId(a), copy)]);
     let l = layer(&s, a);
     let path_uid = |g: u64| l.props.find_group(g).unwrap().sub("contents").unwrap().groups().next().unwrap().uid;
     assert_ne!(path_uid(copy), path_uid(rect), "the copy has its own properties");

@@ -56,12 +56,12 @@ pub mod viewer_tools;
 pub mod viewers;
 pub mod waveform;
 
-use effectcraft_engine::Session;
-use effectcraft_engine::project::Comp;
-use effectcraft_engine::time::Tick;
+use aurora_engine::Session;
+use aurora_engine::project::Comp;
+use aurora_engine::time::Tick;
 use egui::Rect;
 
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::dock::PanelKind;
 
 /// Drag-and-drop payloads between panels.
@@ -80,7 +80,7 @@ pub enum DragPayload {
 /// The current time formatted per project settings (timecode with `;` for drop-frame, frames
 /// or Feet + Frames).
 pub fn timecode(session: &Session, comp: &Comp, t: Tick) -> String {
-    effectcraft_engine::commands::time::display_time(session, comp, t)
+    aurora_engine::commands::time::display_time(session, comp, t)
 }
 
 /// Spacebar held outside a text field: the Hand tool (drags pan the viewer and scroll the
@@ -89,7 +89,7 @@ pub(crate) fn space_hand(ctx: &egui::Context) -> bool {
     ctx.input(|i| i.key_down(egui::Key::Space)) && !ctx.egui_wants_keyboard_input()
 }
 
-pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: PanelKind, rect: Rect) {
+pub fn show(app: &mut AuroraApp, ui: &mut egui::Ui, p: PanelKind, rect: Rect) {
     match p {
         PanelKind::Composition => viewers::show(app, ui, 0, rect),
         PanelKind::Viewer(n) => viewers::show(app, ui, n, rect),
@@ -131,7 +131,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: PanelKind, rect: Rec
 }
 
 /// The ≡ panel menu (opened from a tab).
-pub fn panel_menu_popup(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
+pub fn panel_menu_popup(app: &mut AuroraApp, ui: &mut egui::Ui) {
     let id = egui::Id::new("panel-menu");
     let Some((panel, pos)) = ui.ctx().data(|d| d.get_temp::<(PanelKind, egui::Pos2)>(id)) else { return };
     let mut close = false;

@@ -14,15 +14,15 @@
 
 use std::sync::{Arc, OnceLock};
 
-use effectcraft_color::{BlendMode, ColorSpace, Label};
-use effectcraft_keyframe::{Keyframe, ShapePath, Value};
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{
+use aurora_color::{BlendMode, ColorSpace, Label};
+use aurora_keyframe::{Keyframe, ShapePath, Value};
+use aurora_project::build::{self, Ids};
+use aurora_project::{
     AlphaMode, BitDepth, Comp, Footage, FootageKind, ItemId, ItemKind, Layer, LayerSource, MaskMode, MatteKind, Project, Quality, Sampling, Solid, TrackMatte,
 };
-use effectcraft_raster::Image;
-use effectcraft_render::{Backend, FootageSource, RenderOpts, Renderer};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_raster::Image;
+use aurora_render::{Backend, FootageSource, RenderOpts, Renderer};
+use aurora_time::{FrameRate, Tick};
 
 use crate::Gpu;
 
@@ -54,9 +54,9 @@ pub(crate) fn gpu() -> Option<&'static Gpu> {
     G.get_or_init(|| {
         let g = Gpu::headless();
         if g.is_none() {
-            eprintln!("effectcraft-gpu tests: no GPU adapter, skipping GPU comparisons");
+            eprintln!("aurora-gpu tests: no GPU adapter, skipping GPU comparisons");
         } else if let Some(g) = &g {
-            eprintln!("effectcraft-gpu tests: adapter {}", g.ctx.name);
+            eprintln!("aurora-gpu tests: adapter {}", g.ctx.name);
         }
         g
     })
@@ -87,7 +87,7 @@ pub(crate) fn pattern(seed: u32, w: u32, h: u32) -> Image {
     for y in 0..h {
         for x in 0..w {
             let (u, v) = (x as f32 / w as f32, y as f32 / h as f32);
-            let n = effectcraft_raster::hash_noise(x, y, seed) * 0.25;
+            let n = aurora_raster::hash_noise(x, y, seed) * 0.25;
             let r = (0.5 + 0.5 * (u * 7.0 + k).sin()) * 0.75 + n;
             let g = (0.5 + 0.5 * (v * 5.0 - k).cos()) * 0.75 + n * 0.5;
             let b = ((u + v) * 0.5 + k).fract() * 0.8 + 0.1;
@@ -151,17 +151,17 @@ impl Scene {
     }
 
     /// Add on top of the stack.
-    pub(crate) fn push(&mut self, l: Layer) -> effectcraft_project::LayerId {
+    pub(crate) fn push(&mut self, l: Layer) -> aurora_project::LayerId {
         let id = l.id;
         self.p.comp_mut(self.cid).unwrap().layers.insert(0, l);
         id
     }
 
     pub(crate) fn effect(&mut self, l: &mut Layer, id: &str, vals: &[(&str, Value)]) {
-        let spec = effectcraft_effects::find(id).unwrap();
+        let spec = aurora_effects::find(id).unwrap();
         let mut next = self.p.next_id;
-        let size = effectcraft_render::source_size(&self.p, l);
-        let mut g = effectcraft_effects::instantiate(spec, &mut Ids(&mut next), spec.name, [size.0 as f64, size.1 as f64]);
+        let size = aurora_render::source_size(&self.p, l);
+        let mut g = aurora_effects::instantiate(spec, &mut Ids(&mut next), spec.name, [size.0 as f64, size.1 as f64]);
         self.p.next_id = next;
         for (k, v) in vals {
             g.prop_mut(k).unwrap_or_else(|| panic!("{id}: no {k}")).value = v.clone();
@@ -388,8 +388,8 @@ fn layer_styles_collapsed_precomps_and_cpu_fallbacks() {
         s.push(bg);
         let mut l = s.solid([0.8, 0.3, 0.2], 40, 30);
         let mut next = s.p.next_id;
-        effectcraft_project::styles::add_style(&mut l, &mut Ids(&mut next), "dropShadow", &s.comp.global_light, true).unwrap();
-        effectcraft_project::styles::add_style(&mut l, &mut Ids(&mut next), "stroke", &s.comp.global_light, true).unwrap();
+        aurora_project::styles::add_style(&mut l, &mut Ids(&mut next), "dropShadow", &s.comp.global_light, true).unwrap();
+        aurora_project::styles::add_style(&mut l, &mut Ids(&mut next), "stroke", &s.comp.global_light, true).unwrap();
         s.p.next_id = next;
         l.blend_mode = BlendMode::Multiply;
         set(&mut l, "transform/rotation", Value::Scalar(10.0));
@@ -428,19 +428,18 @@ fn layer_styles_collapsed_precomps_and_cpu_fallbacks() {
 /// buffer geometry (padding, offset).
 pub(crate) fn effect_direct(id: &str, vals: &[(&str, Value)], adjustment: bool) {
     let Some(g) = gpu() else { return };
-    let spec = effectcraft_effects::find(id).unwrap();
+    let spec = aurora_effects::find(id).unwrap();
     let size = [70.0, 44.0];
-    let mut params =
-        effectcraft_effects::Params { values: spec.params.iter().map(|ps| (ps.id.to_string(), effectcraft_effects::default_value(ps, size))).collect() };
+    let mut params = aurora_effects::Params { values: spec.params.iter().map(|ps| (ps.id.to_string(), aurora_effects::default_value(ps, size))).collect() };
     for (k, v) in vals {
         params.values.insert(k.to_string(), v.clone());
     }
     for scale in [1.0, 0.5] {
         let img = pattern(7, (size[0] * scale) as u32, (size[1] * scale) as u32);
-        let buf = effectcraft_effects::Buf { img, offset: [0.0, 0.0], scale };
-        let ctx = || effectcraft_effects::EffectCtx { params: &params, time: 0.25, layer_size: size, seed: 11, adjustment, env: Default::default() };
+        let buf = aurora_effects::Buf { img, offset: [0.0, 0.0], scale };
+        let ctx = || aurora_effects::EffectCtx { params: &params, time: 0.25, layer_size: size, seed: 11, adjustment, env: Default::default() };
         let cpu = (spec.render)(&ctx(), buf.clone());
-        let out = effectcraft_render::Accelerator::effects(g, &[effectcraft_render::FxStep { spec, ctx: ctx() }], &buf, None).expect("the GPU runs the effect");
+        let out = aurora_render::Accelerator::effects(g, &[aurora_render::FxStep { spec, ctx: ctx() }], &buf, None).expect("the GPU runs the effect");
         assert_eq!((out.offset, out.scale), (cpu.offset, cpu.scale), "{id}: geometry");
         let d = diff(&cpu.img, &out.img, 1e-3);
         let allow = if on_gl() { (d.total as f64 * GL_BOUNDARY_FLIPS) as usize } else { 0 };
@@ -552,7 +551,7 @@ fn gpu_effects_match_cpu() {
     effect_case("ec.color.exposure", &[("channels", Value::Enum(1)), ("red/redExposure", n(0.8)), ("green/greenOffset", n(-0.05)), ("blue/blueGamma", n(1.6))]);
     effect_case("ec.color.exposure", &[("master/exposure", n(0.5)), ("master/offset", n(-0.03)), ("bypassLinearLight", Value::Bool(true))]);
     effect_case("ec.channel.invert", &[]);
-    effect_case("ec.channel.invert", &[("channel", Value::Enum(effectcraft_effects::INVERT_ALPHA)), ("blend", n(30.0))]);
+    effect_case("ec.channel.invert", &[("channel", Value::Enum(aurora_effects::INVERT_ALPHA)), ("blend", n(30.0))]);
     effect_case("ec.channel.invert", &[("channel", Value::Enum(2))]);
     effect_case("ec.distort.transform", &[("rotation", n(20.0)), ("scaleHeight", n(80.0)), ("skew", n(10.0)), ("opacity", n(70.0))]);
 }
@@ -576,7 +575,7 @@ fn effect_chains_and_mixed_stacks() {
 
 #[test]
 fn registry_badges_match_the_gpu_implementation() {
-    for s in effectcraft_effects::registry() {
+    for s in aurora_effects::registry() {
         let implemented = crate::effects::supports(s.id);
         assert_eq!(s.gpu, implemented, "{}: registry gpu = {}, GPU implementation = {implemented}", s.id, s.gpu);
     }
@@ -596,7 +595,7 @@ fn quantization_preserves_cpu_levels_and_half_step_neighbors() {
             *p = [v, v, v, 1.0];
         }
         let input = g.ctx.upload_image(&cpu).unwrap();
-        effectcraft_render::color::quantize(&mut cpu, levels);
+        aurora_render::color::quantize(&mut cpu, levels);
         let mut e = crate::context::Enc::new(&g.ctx);
         let out = crate::ops::quantize(&mut e, &input, levels);
         let bytes = e.read_texture(&out.texture, out.width, out.height, 16).unwrap();

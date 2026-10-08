@@ -14,9 +14,9 @@
 //!
 //! Animation, expressions and values are kept.
 
-use effectcraft_keyframe::Value;
-use effectcraft_project::build::Ids;
-use effectcraft_project::{Node, ParamUi, PropGroup, Property};
+use aurora_keyframe::Value;
+use aurora_project::build::Ids;
+use aurora_project::{Node, ParamUi, PropGroup, Property};
 
 use crate::{EffectSpec, ParamSpec, default_value, group_name, layer_source_id};
 

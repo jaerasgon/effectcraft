@@ -1,43 +1,43 @@
-# Driving EffectCraft from agents
+# Driving Aurora from agents
 
-Everything in EffectCraft is an engine command with a stable id and JSON params. Menus, shortcuts,
+Everything in Aurora is an engine command with a stable id and JSON params. Menus, shortcuts,
 panel gestures, the CLI, the control channel and MCP all go through the same commands, so anything a
 user can do, an agent can do too. There are three ways in:
 
 | Interface | Best for | Needs a window |
 |---|---|---|
-| **MCP** (`effectcraft-cli mcp`) | Claude Code and other MCP clients | no (headless), or yes with `--bridge` |
-| **CLI** (`effectcraft-cli exec/get/set/...`) | one-shot scripting and CI; JSON output with `--json` | no |
-| **Control channel** (`effectcraft --control 9877`) | driving and seeing the live UI; see [control-protocol.md](control-protocol.md) | yes |
+| **MCP** (`aurora-cli mcp`) | Claude Code and other MCP clients | no (headless), or yes with `--bridge` |
+| **CLI** (`aurora-cli exec/get/set/...`) | one-shot scripting and CI; JSON output with `--json` | no |
+| **Control channel** (`aurora --control 9877`) | driving and seeing the live UI; see [control-protocol.md](control-protocol.md) | yes |
 
 ## MCP setup
 
-Build once with `cargo build --release -p effectcraft-cli`, then register the server. For Claude
+Build once with `cargo build --release -p aurora-cli`, then register the server. For Claude
 Code, add a `.mcp.json` at the project root:
 
 ```json
 {
   "mcpServers": {
-    "effectcraft": {
-      "command": "/path/to/effectcraft/target/release/effectcraft-cli",
+    "aurora": {
+      "command": "/path/to/aurora/target/release/aurora-cli",
       "args": ["mcp"]
     }
   }
 }
 ```
 
-This repository ships a ready-made [`.mcp.json`](../.mcp.json): `effectcraft` (headless, demo
-project loaded) and `effectcraft-app` (bridged to a desktop app started with `--control 9877`). Both
+This repository ships a ready-made [`.mcp.json`](../.mcp.json): `aurora` (headless, demo
+project loaded) and `aurora-app` (bridged to a desktop app started with `--control 9877`). Both
 run through `cargo run --release`, so the first start compiles; run
-`cargo build --release -p effectcraft-cli` once beforehand to avoid an MCP startup timeout.
+`cargo build --release -p aurora-cli` once beforehand to avoid an MCP startup timeout.
 
 You can also register it from the command line:
-`claude mcp add effectcraft -- /path/to/target/release/effectcraft-cli mcp`. Other clients (Claude
+`claude mcp add aurora -- /path/to/target/release/aurora-cli mcp`. Other clients (Claude
 Desktop, Cursor and the like) take the same `command` and `args`.
 
 - **Headless** (`["mcp"]`): an in-process session with no window. Add `"--demo"` or
   `"--project", "file.ecproj"` to start with content. Startup is instant.
-- **Bridge** (`["mcp", "--bridge", "9877"]`): drives a running `effectcraft --control 9877`, so you
+- **Bridge** (`["mcp", "--bridge", "9877"]`): drives a running `aurora --control 9877`, so you
   see every change live. Bridge mode adds `screenshot` and the `ui_*` tools.
 
 The server speaks JSON-RPC 2.0 over stdio, one message per line, and supports MCP protocol versions
@@ -109,7 +109,7 @@ The desktop app checks footage in the background after every open (a "Checking f
 the Progress panel, `jobs.list`); headless sessions run `footage.check` when they want it.
 ### Cookbook (from end-to-end QA)
 
-The scenarios in `crates/automation/tests/qa/` and `apps/effectcraft-cli/tests/qa_template.rs`
+The scenarios in `crates/automation/tests/qa/` and `apps/aurora-cli/tests/qa_template.rs`
 build real projects through these interfaces; they are worked examples of everything below.
 
 * **Name things when you create them**: `layer.newText`, `layer.newShape`, `layer.newSolid`,
@@ -189,7 +189,7 @@ pass `"wait": true` to block until it finishes, which is what the CLI and headle
    adapt-feature and "If Confidence is Below" behaviour; `track.status` reports the track points.
 
 ```sh
-effectcraft-cli run clip.ecproj track.motion '{"layer":"#2"}' \
+aurora-cli run clip.ecproj track.motion '{"layer":"#2"}' \
   track.setPoint '{"point":1,"center":[812,440]}' \
   track.analyze '{"wait":true}' track.apply '{}' --save
 ```
@@ -221,7 +221,7 @@ face method returns `faceModel`, the engine it tries first (the classical one wh
 no face in the mask).
 
 ```sh
-effectcraft-cli run clip.ecproj face.model.download '{"id":"mediapipe-face","wait":true}' face.model.select '{"id":"mediapipe-face","wait":true}' \
+aurora-cli run clip.ecproj face.model.download '{"id":"mediapipe-face","wait":true}' face.model.select '{"id":"mediapipe-face","wait":true}' \
   track.mask '{"layer":"#1","mask":1,"method":"faceDetailed","direction":"forward","wait":true}' --save
 ```
 
@@ -234,8 +234,8 @@ ends the same vertex count with a matched correspondence. Options: `keyframeRate
 panel's defaults.
 
 ```sh
-effectcraft-cli exec track.mask '{"layer":"#2","mask":1,"method":"perspective","wait":true}' clip.ecproj --save
-effectcraft-cli exec mask.interpolate '{"layer":"#2","mask":"Mask 1","times":[0,2],"addVertices":10}' clip.ecproj --save --json
+aurora-cli exec track.mask '{"layer":"#2","mask":1,"method":"perspective","wait":true}' clip.ecproj --save
+aurora-cli exec mask.interpolate '{"layer":"#2","mask":"Mask 1","times":[0,2],"addVertices":10}' clip.ecproj --save --json
 ```
 
 ### Warp Stabilizer
@@ -259,10 +259,10 @@ scenes with depth stabilise where one perspective transform cannot;
 softer mesh) tunes it.
 
 ```sh
-effectcraft-cli run shaky.ecproj track.warpStabilizer '{"layer":"#1","wait":true}' \
+aurora-cli run shaky.ecproj track.warpStabilizer '{"layer":"#1","wait":true}' \
   prop.set '{"layer":"#1","path":"effects/#1/stabilization/result","value":1}' --save
-effectcraft-cli exec warp.analyze '{"layer":"#1","wait":true}' shaky.ecproj --save --json
-effectcraft-cli exec warp.status '{"layer":"#1"}' shaky.ecproj --json
+aurora-cli exec warp.analyze '{"layer":"#1","wait":true}' shaky.ecproj --save --json
+aurora-cli exec warp.status '{"layer":"#1"}' shaky.ecproj --json
 ```
 
 ### 3D Camera Tracker
@@ -292,9 +292,9 @@ Changing the layer's frames clears the analysis; changing `effects/#1/shotType`,
 `effects/#1/horizontalAngleOfView`, `effects/#1/advanced/solveMethod` re-solves the stored tracks.
 
 ```sh
-effectcraft-cli run shot.ecproj track.camera '{"layer":"#1","wait":true}' \
+aurora-cli run shot.ecproj track.camera '{"layer":"#1","wait":true}' \
   camera.points '{}' --json
-effectcraft-cli run shot.ecproj camera.createFromSolve '{"kind":"solid","points":[12,40,77]}' --save
+aurora-cli run shot.ecproj camera.createFromSolve '{"kind":"solid","points":[12,40,77]}' --save
 ```
 
 ### Roto Brush & Refine Edge
@@ -325,12 +325,12 @@ Trained model (Roto Brush 2.0 / 3.0):
   classic engine (1.0) and the chosen model (2.0, 3.0).
 
 ```sh
-effectcraft-cli run clip.ecproj roto.model.install '{"path":"mobile_sam.pt"}' roto.model.select '{"id":"mobilesam","wait":true}' \
+aurora-cli run clip.ecproj roto.model.install '{"path":"mobile_sam.pt"}' roto.model.select '{"id":"mobilesam","wait":true}' \
   roto.stroke '{"layer":"#1","points":[[300,200],[360,230]],"radius":10}' roto.propagate '{"layer":"#1","wait":true}' --save
 ```
 
 ```sh
-effectcraft-cli run clip.ecproj roto.stroke '{"layer":"#1","points":[[300,200],[360,230]],"radius":10}' \
+aurora-cli run clip.ecproj roto.stroke '{"layer":"#1","points":[[300,200],[360,230]],"radius":10}' \
   roto.stroke '{"layer":"#1","kind":"bg","points":[[40,40],[600,40]],"radius":12}' \
   roto.propagate '{"layer":"#1","wait":true}' roto.freeze '{"layer":"#1","wait":true}' --save
 ```
@@ -435,28 +435,28 @@ on stdout. Errors print `{"error": ...}` and exit with status 1; usage errors, s
 option, exit with status 2 before anything runs.
 
 ```sh
-effectcraft-cli info --json
-effectcraft-cli commands --filter keys
-effectcraft-cli exec --list --schemas --json                     # every command with its params JSON Schema
-effectcraft-cli exec comp.new --params '{"name":"Main","width":1280,"height":720}' --empty --save-as main.ecproj
-effectcraft-cli exec layer.newSolid '{"color":"#3366ff"}' main.ecproj --save
-effectcraft-cli props Main '#1' --project main.ecproj           # flat property list with paths
-effectcraft-cli set Main '#1' transform/opacity 40 main.ecproj --save
-effectcraft-cli set Main '#1' transform/position '[100,360]' --time 0 main.ecproj --save
-effectcraft-cli get Main '#1' transform/position --time 0.5 main.ecproj --json
-effectcraft-cli run main.ecproj comp.open '{"comp":"Main"}' time.set '{"time":1}' --json
-effectcraft-cli render-frame main.ecproj --time 1 --max-side 640 --out f.png --json
-effectcraft-cli exec layer.newNull --bridge 9877                 # same commands, against the live app
-effectcraft-cli exec file.exportLottie '{"comp":"Main","path":"main.json","includeExpressions":true}' main.ecproj --json
-effectcraft-cli exec file.importLottie '{"path":"anim.json"}' main.ecproj --save
+aurora-cli info --json
+aurora-cli commands --filter keys
+aurora-cli exec --list --schemas --json                     # every command with its params JSON Schema
+aurora-cli exec comp.new --params '{"name":"Main","width":1280,"height":720}' --empty --save-as main.ecproj
+aurora-cli exec layer.newSolid '{"color":"#3366ff"}' main.ecproj --save
+aurora-cli props Main '#1' --project main.ecproj           # flat property list with paths
+aurora-cli set Main '#1' transform/opacity 40 main.ecproj --save
+aurora-cli set Main '#1' transform/position '[100,360]' --time 0 main.ecproj --save
+aurora-cli get Main '#1' transform/position --time 0.5 main.ecproj --json
+aurora-cli run main.ecproj comp.open '{"comp":"Main"}' time.set '{"time":1}' --json
+aurora-cli render-frame main.ecproj --time 1 --max-side 640 --out f.png --json
+aurora-cli exec layer.newNull --bridge 9877                 # same commands, against the live app
+aurora-cli exec file.exportLottie '{"comp":"Main","path":"main.json","includeExpressions":true}' main.ecproj --json
+aurora-cli exec file.importLottie '{"path":"anim.json"}' main.ecproj --save
 ```
 
 Scripts written against After Effects' documented scripting API run with `script`:
 
 ```sh
-effectcraft-cli script build.jsx --save-as main.ecproj     # empty project unless one is given
-effectcraft-cli script --eval 'app.project.item(1).numLayers' main.ecproj --json
-effectcraft-cli script tweak.jsx --bridge 9877              # against the live app
+aurora-cli script build.jsx --save-as main.ecproj     # empty project unless one is given
+aurora-cli script --eval 'app.project.item(1).numLayers' main.ecproj --json
+aurora-cli script tweak.jsx --bridge 9877              # against the live app
 ```
 
 `writeLn`/`$.writeln`/`alert` output is printed, then the value of the last expression. A script
@@ -473,9 +473,9 @@ Premiere Pro interop goes through timeline interchange (MCP: the `execute_comman
 with the same ids):
 
 ```sh
-effectcraft-cli exec file.importTimeline '{"path":"edit.xml"}' main.ecproj --save      # FCP7 XML / .fcpxml / .otio / .edl / .aaf / .omf
-effectcraft-cli exec file.exportTimeline '{"comp":"Main","path":"Main.xml"}' main.ecproj --json
-effectcraft-cli exec file.exportTimeline '{"comp":"Main","path":"Main.otio","prerender":"none"}' main.ecproj
+aurora-cli exec file.importTimeline '{"path":"edit.xml"}' main.ecproj --save      # FCP7 XML / .fcpxml / .otio / .edl / .aaf / .omf
+aurora-cli exec file.exportTimeline '{"comp":"Main","path":"Main.xml"}' main.ecproj --json
+aurora-cli exec file.exportTimeline '{"comp":"Main","path":"Main.otio","prerender":"none"}' main.ecproj
 ```
 
 `file.importTimeline` returns `{format, folder, comps, allComps, items, missing, warnings}`
@@ -491,7 +491,7 @@ not read or written.
 
 ## Seeing the UI
 
-To work on the UI, start the app with `cargo run -p effectcraft -- --control 9877` (add `--demo` to
+To work on the UI, start the app with `cargo run -p aurora -- --control 9877` (add `--demo` to
 open the demo project; without it the app starts with an empty project) and use MCP bridge
 mode or the raw control channel. A good loop is: `ui_elements` to find an id, `ui_click` or `ui_drag`
 to act, then `screenshot {"panel":"Timeline"}` to check the result. `render_frame` shows the

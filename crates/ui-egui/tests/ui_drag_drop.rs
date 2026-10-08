@@ -3,19 +3,19 @@
 //! starting there (#89); dropped on the Composition viewer they are centred where they land
 //! (#85); an effect dropped on the viewer goes on the layer under the pointer (#88).
 
-use effectcraft_engine::Session;
-use effectcraft_engine::keyframe::Value as KV;
-use effectcraft_engine::time::Tick;
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::dock::PanelKind;
-use effectcraft_ui_egui::panels::viewer::{comp_to_screen, last_fit};
+use aurora_engine::Session;
+use aurora_engine::keyframe::Value as KV;
+use aurora_engine::time::Tick;
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::dock::PanelKind;
+use aurora_ui_egui::panels::viewer::{comp_to_screen, last_fit};
 use egui::{Event, Modifiers, Pos2, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use serde_json::json;
 
 /// Comp "Main" (4 s at 30 fps, current time 1 s) with solids Top, Middle and Bottom, and comp
 /// "Clip" in the Project panel to drag in.
-fn harness() -> (Harness<'static, EffectcraftApp>, u64) {
+fn harness() -> (Harness<'static, AuroraApp>, u64) {
     let mut s = Session::default();
     let clip = s.execute("comp.new", json!({"name": "Clip", "width": 160, "height": 90, "frameRate": 30, "duration": 1})).unwrap()["comp"].as_u64().unwrap();
     s.execute("comp.new", json!({"name": "Main", "width": 320, "height": 180, "frameRate": 30, "duration": 4})).unwrap();
@@ -23,18 +23,18 @@ fn harness() -> (Harness<'static, EffectcraftApp>, u64) {
         s.execute("layer.newSolid", json!({"name": name, "color": "#406080"})).unwrap();
     }
     s.execute("time.set", json!({"time": 1.0})).unwrap();
-    let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(vec2(1600.0, 1000.0)).build_eframe(|_| AuroraApp::new(s));
     h.run_steps(3);
     (h, clip)
 }
 
-fn rect(h: &Harness<'_, EffectcraftApp>, id: &str) -> Rect {
+fn rect(h: &Harness<'_, AuroraApp>, id: &str) -> Rect {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}")).clone();
     Rect::from_min_size(pos2(e.rect[0], e.rect[1]), vec2(e.rect[2], e.rect[3]))
 }
 
 /// Press on `from`, move to `to` in steps, release there (with `modifiers` held).
-fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, modifiers: Modifiers) {
+fn drag(h: &mut Harness<'_, AuroraApp>, from: Pos2, to: Pos2, modifiers: Modifiers) {
     h.event(Event::PointerMoved(from));
     h.step();
     h.event(Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
@@ -51,15 +51,15 @@ fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, modifiers: Mo
 }
 
 /// Layer names top to bottom, and the In point of `name`.
-fn stack(h: &Harness<'_, EffectcraftApp>) -> Vec<String> {
+fn stack(h: &Harness<'_, AuroraApp>) -> Vec<String> {
     h.state().session.active_comp().unwrap().layers.iter().map(|l| l.name.clone()).collect()
 }
 
-fn in_point(h: &Harness<'_, EffectcraftApp>, index: usize) -> f64 {
+fn in_point(h: &Harness<'_, AuroraApp>, index: usize) -> f64 {
     h.state().session.active_comp().unwrap().layers[index].in_point.seconds()
 }
 
-fn layer_id(h: &Harness<'_, EffectcraftApp>, name: &str) -> u64 {
+fn layer_id(h: &Harness<'_, AuroraApp>, name: &str) -> u64 {
     h.state().session.active_comp().unwrap().layers.iter().find(|l| l.name == name).unwrap().id.0
 }
 
@@ -133,7 +133,7 @@ fn effects_dropped_on_the_viewer_go_on_the_layer_under_the_pointer() {
     let to = comp_to_screen(&h.ctx, [160.0, 90.0]).unwrap();
     drag(&mut h, fx, to, Modifiers::NONE);
     let comp = h.state().session.active_comp().unwrap();
-    let effects = |id: u64| comp.layer(effectcraft_engine::project::LayerId(id)).unwrap().effects().map_or(0, |fx| fx.groups().count());
+    let effects = |id: u64| comp.layer(aurora_engine::project::LayerId(id)).unwrap().effects().map_or(0, |fx| fx.groups().count());
     assert_eq!((effects(top), effects(middle)), (1, 0), "on Top, which is under the pointer");
 }
 
@@ -143,7 +143,7 @@ fn effects_dropped_on_the_viewer_go_on_the_layer_under_the_pointer() {
 #[test]
 fn project_items_dropped_on_new_comp_make_a_composition() {
     let (mut h, clip) = harness();
-    let comps = |h: &Harness<'_, EffectcraftApp>| h.state().session.project.comps().count();
+    let comps = |h: &Harness<'_, AuroraApp>| h.state().session.project.comps().count();
     let before = comps(&h);
     let item = rect(&h, &format!("project.item.{clip}.name")).center();
     let button = rect(&h, "project.newComp").center();
@@ -157,11 +157,11 @@ fn project_items_dropped_on_new_comp_make_a_composition() {
 
     // Two selected items, one dragged: New Composition from Selection asks how.
     let main = h.state().session.project.items.values().find(|i| i.name == "Main").unwrap().id;
-    h.state_mut().session.state.project_selection = vec![effectcraft_engine::project::ItemId(clip), main];
+    h.state_mut().session.state.project_selection = vec![aurora_engine::project::ItemId(clip), main];
     h.run_steps(2);
     let item = rect(&h, &format!("project.item.{clip}.name")).center();
     drag(&mut h, item, button, Modifiers::NONE);
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::Form));
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::Form));
     assert!(h.state().auto.find("form.field.single").is_some(), "the New Composition from Selection dialog");
     assert_eq!(comps(&h), before + 1, "nothing made yet");
 }

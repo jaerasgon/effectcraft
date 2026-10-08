@@ -5,16 +5,16 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::mem::ManuallyDrop;
 
+use aurora_keyframe::Value;
 use boa_engine::object::builtins::JsArray;
 use boa_engine::{Context, JsNativeError, JsObject, JsResult, JsString, JsValue, NativeFunction, Script, Source, js_string};
-use effectcraft_keyframe::Value;
 
 use crate::host::{Key, Req, Resp, secs};
 use crate::noise;
 
 const PRELUDE: &str = include_str!("prelude.js");
 /// Message of the error thrown when a request isn't answered yet (never shown to users).
-const PENDING: &str = "\u{1}effectcraft: pending host request";
+const PENDING: &str = "\u{1}aurora: pending host request";
 const MAX_SCRIPTS: usize = 4096;
 /// The part of boa's stack-size limit error the runtime recovers from (see [`run`]).
 const STACK_LIMIT: &str = "maximum stack size";
@@ -464,7 +464,7 @@ pub fn to_value(out: &Out, current: &Value) -> Result<Value, String> {
             Out::Undefined | Out::Null => String::new(),
             Out::Path { .. } => "[object Path]".into(),
             Out::Style(j) => {
-                serde_json::from_str::<serde_json::Value>(j).ok().map(|v| styled_doc(&v, &effectcraft_keyframe::TextDoc::default()).text).unwrap_or_default()
+                serde_json::from_str::<serde_json::Value>(j).ok().map(|v| styled_doc(&v, &aurora_keyframe::TextDoc::default()).text).unwrap_or_default()
             }
             Out::Object(s) => s.clone(),
         }
@@ -506,7 +506,7 @@ pub fn to_value(out: &Out, current: &Value) -> Result<Value, String> {
                     v.resize(n, [0.0; 2]);
                     v
                 };
-                Value::Path(effectcraft_keyframe::ShapePath {
+                Value::Path(aurora_keyframe::ShapePath {
                     vertices: points.clone(),
                     in_tangents: fit(ins),
                     out_tangents: fit(outs),
@@ -523,8 +523,8 @@ pub fn to_value(out: &Out, current: &Value) -> Result<Value, String> {
 /// Apply a returned text style (`{doc, ops}`) to the property's own document `own`: the style's
 /// source document (another layer's, or this one's) gives the formatting, then the setter calls
 /// apply in order. Without `setText` the text stays `own`'s.
-pub fn styled_doc(v: &serde_json::Value, own: &effectcraft_keyframe::TextDoc) -> effectcraft_keyframe::TextDoc {
-    use effectcraft_keyframe::TextDoc;
+pub fn styled_doc(v: &serde_json::Value, own: &aurora_keyframe::TextDoc) -> aurora_keyframe::TextDoc {
+    use aurora_keyframe::TextDoc;
     let mut d = own.clone();
     if let Some(src) = v.get("doc").filter(|s| !s.is_null()).and_then(|s| serde_json::from_value::<TextDoc>(s.clone()).ok()) {
         if src.text == own.text {

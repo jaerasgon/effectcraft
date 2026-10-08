@@ -5,16 +5,16 @@
 //!
 //! Every edit is an engine command (`keys.set`, `keys.setEase`, `keys.select`, `keys.*`).
 
-use effectcraft_engine::KeyRef;
-use effectcraft_engine::keyframe::{Interp, Value, side_ease};
-use effectcraft_engine::project::{Comp, Layer, LayerId, Property};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::time::Tick;
+use aurora_engine::KeyRef;
+use aurora_engine::keyframe::{Interp, Value, side_ease};
+use aurora_engine::project::{Comp, Layer, LayerId, Property};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::time::Tick;
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
 use super::timeline::TMap;
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::theme::Tokens;
 
 type Actions = Vec<(String, serde_json::Value)>;
@@ -65,7 +65,7 @@ struct Curve<'a> {
 /// Properties shown: the selected ones, or every animated property of the selected layers.
 /// Whether the speed graph shows: Edit Speed Graph, or Auto-Select Graph Type with only spatial
 /// properties shown (Position, Anchor Point… move along a path: their speed is what to edit).
-fn speed_graph(app: &EffectcraftApp, comp: &Comp) -> bool {
+fn speed_graph(app: &AuroraApp, comp: &Comp) -> bool {
     match app.ui.timeline.graph_mode.as_str() {
         "speed" => true,
         "value" => false,
@@ -79,7 +79,7 @@ fn speed_graph(app: &EffectcraftApp, comp: &Comp) -> bool {
     }
 }
 
-fn shown_props(app: &EffectcraftApp, comp: &Comp) -> Vec<(LayerId, u64)> {
+fn shown_props(app: &AuroraApp, comp: &Comp) -> Vec<(LayerId, u64)> {
     let st = &app.session.state;
     let numeric = |pr: &Property| !pr.value.components().is_empty() && pr.value.interpolates();
     if app.ui.timeline.graph_show_selected && !st.selected_props.is_empty() {
@@ -102,7 +102,7 @@ fn shown_dims(l: &Layer, pr: &Property) -> usize {
 }
 
 /// Build the curves for the visible time span.
-fn curves<'a>(app: &EffectcraftApp, comp: &'a Comp, ectx: &EvalCtx, tm: TMap, plot: Rect, speed: bool) -> Vec<Curve<'a>> {
+fn curves<'a>(app: &AuroraApp, comp: &'a Comp, ectx: &EvalCtx, tm: TMap, plot: Rect, speed: bool) -> Vec<Curve<'a>> {
     let sel = &app.session.state.selected_keys;
     let n = ((plot.width() / 2.0) as usize).max(2);
     let mut out = vec![];
@@ -121,9 +121,9 @@ fn curves<'a>(app: &EffectcraftApp, comp: &'a Comp, ectx: &EvalCtx, tm: TMap, pl
                 let v = if speed {
                     let lt = l.layer_time(tt);
                     if spatial {
-                        effectcraft_engine::keyframe::speed(&pr.keys, lt, true)
+                        aurora_engine::keyframe::speed(&pr.keys, lt, true)
                     } else {
-                        effectcraft_engine::keyframe::velocity(&pr.keys, lt, false).get(d).copied().unwrap_or(0.0).abs()
+                        aurora_engine::keyframe::velocity(&pr.keys, lt, false).get(d).copied().unwrap_or(0.0).abs()
                     }
                 } else {
                     ectx.at(tt).value(l, pr).components().get(d).copied().unwrap_or(0.0)
@@ -162,7 +162,7 @@ fn curves<'a>(app: &EffectcraftApp, comp: &'a Comp, ectx: &EvalCtx, tm: TMap, pl
     out
 }
 
-fn text_button(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, x: &mut f32, y: f32, label: &str, on: bool, id: &str, tip: &str) -> bool {
+fn text_button(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, x: &mut f32, y: f32, label: &str, on: bool, id: &str, tip: &str) -> bool {
     let t = app.tokens;
     let w = p.layout_no_wrap(label.to_string(), Tokens::ui(11.0), t.text).size().x + 14.0;
     let r = Rect::from_min_size(pos2(*x, y - 9.0), vec2(w, 18.0));
@@ -185,7 +185,7 @@ fn text_button(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, x
 }
 
 /// Draw the Graph Editor into `area` (the right side of the Timeline) and queue edits.
-pub(crate) fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painter, comp: &Comp, ectx: &EvalCtx, tm: TMap, area: Rect, actions: &mut Actions) {
+pub(crate) fn show(app: &mut AuroraApp, ui: &mut egui::Ui, p: &egui::Painter, comp: &Comp, ectx: &EvalCtx, tm: TMap, area: Rect, actions: &mut Actions) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let footer_h = 28.0;
@@ -499,7 +499,7 @@ pub(crate) fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, p: &egui::Painte
 }
 
 /// Zoom time and value to the selected keys (and their handles).
-fn fit_selection(app: &mut EffectcraftApp, cs: &[Curve], tm: TMap, plot: Rect) {
+fn fit_selection(app: &mut AuroraApp, cs: &[Curve], tm: TMap, plot: Rect) {
     let mut t0 = f64::INFINITY;
     let mut t1 = f64::NEG_INFINITY;
     let mut v0 = f64::INFINITY;

@@ -2,10 +2,10 @@
 
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use effectcraft_color::Label;
-use effectcraft_project::build;
-use effectcraft_project::{Comp, ItemId, ItemKind, LayerSource, Project, Solid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::Label;
+use aurora_project::build;
+use aurora_project::{Comp, ItemId, ItemKind, LayerSource, Project, Solid};
+use aurora_time::{FrameRate, Tick};
 
 use crate::{Accelerator, AutoKey, AutoPick, Backend, NoFootage, RenderOpts, Renderer};
 

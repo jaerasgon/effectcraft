@@ -2,10 +2,10 @@
 //! comp renderer switch, Layer ▸ Environment Layer, Geometry Options for extruded text and
 //! shapes, and Layer ▸ Material commands.
 
-use effectcraft_keyframe::Value as KV;
-use effectcraft_project::build::{self, Ids};
-use effectcraft_project::{FootageKind, ItemId, ItemKind, Layer, LayerSource, Node, PrimitiveKind, PropGroup, Renderer};
-use effectcraft_time::Tick;
+use aurora_keyframe::Value as KV;
+use aurora_project::build::{self, Ids};
+use aurora_project::{FootageKind, ItemId, ItemKind, Layer, LayerSource, Node, PrimitiveKind, PropGroup, Renderer};
+use aurora_time::Tick;
 use serde_json::{Value, json};
 
 use super::layer::{color_p, index_p, insert_layer, insert_layer_at, place, position_p};
@@ -27,7 +27,7 @@ pub(crate) fn add_geometry_options(next_id: &mut u64, l: &mut Layer) {
 }
 
 /// Advanced 3D comps: give every text and shape layer Geometry Options.
-pub(crate) fn sync_geometry_options(proj: &mut effectcraft_project::Project, cid: ItemId) {
+pub(crate) fn sync_geometry_options(proj: &mut aurora_project::Project, cid: ItemId) {
     if proj.comp(cid).is_none_or(|c| c.renderer != Renderer::Advanced3D) {
         return;
     }

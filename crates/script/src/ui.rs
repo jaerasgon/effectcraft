@@ -15,9 +15,9 @@ use std::collections::BTreeMap;
 use std::mem::ManuallyDrop;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+use aurora_engine::Session;
+use aurora_engine::scriptui::{ScriptUiEvent, ScriptWindow, layout};
 use boa_engine::{Context, JsResult, JsValue, js_string};
-use effectcraft_engine::Session;
-use effectcraft_engine::scriptui::{ScriptUiEvent, ScriptWindow, layout};
 use serde_json::{Value as J, json};
 
 use crate::runtime::{ACTIVE, Active, CONSOLE, Restore, ScriptError, arg_string, js_str, outcome, script_error, settle, throw, with_active};
@@ -83,7 +83,7 @@ pub(crate) fn native_new_id(_: &JsValue, _: &[JsValue], _: &mut Context) -> JsRe
 }
 
 /// `__uiLayoutNative(windowJson)` → `{controlId: [x, y, width, height]}`: ScriptUI's automatic
-/// layout ([`effectcraft_engine::scriptui::layout`]) for `layout.layout()`.
+/// layout ([`aurora_engine::scriptui::layout`]) for `layout.layout()`.
 pub(crate) fn native_layout(_: &JsValue, args: &[JsValue], ctx: &mut Context) -> JsResult<JsValue> {
     let s = arg_string(args, 0, ctx)?;
     let mut w: ScriptWindow = serde_json::from_str(&s).map_err(|e| throw(format!("layout: {e}")))?;
@@ -266,7 +266,7 @@ fn receive(session: &mut Session, host: u32, end: HostEnd) -> crate::Outcome {
 /// Run a script file on a new script-host thread (see the module docs). Not on the web, where
 /// scripts run inline.
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn run_threaded(session: &mut Session, req: &effectcraft_engine::ScriptRequest) -> crate::Outcome {
+pub(crate) fn run_threaded(session: &mut Session, req: &aurora_engine::ScriptRequest) -> crate::Outcome {
     let host = new_host_id();
     let (to_tx, to_rx) = std::sync::mpsc::channel();
     let (from_tx, from_rx) = std::sync::mpsc::channel();
@@ -300,7 +300,7 @@ pub(crate) fn publish(session: &mut Session, host: u32, name: &str, mut windows:
     }
 }
 
-/// The [`effectcraft_engine::scriptui::ScriptUiDispatch`] this crate provides: run a window
+/// The [`aurora_engine::scriptui::ScriptUiDispatch`] this crate provides: run a window
 /// event's handlers in the script that made the window, then publish its windows' new state.
 /// Returns the handler run's `{ok, output, error, waiting?}`.
 pub fn dispatch_ui(session: &mut Session, ev: &ScriptUiEvent) -> Result<J, String> {

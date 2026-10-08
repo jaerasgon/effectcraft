@@ -20,10 +20,10 @@ pub mod mesh;
 
 use std::sync::{Arc, Mutex};
 
-use effectcraft_keyframe::Value;
-use effectcraft_project::build::Ids;
-use effectcraft_project::{GroupKind, ParamUi, PropGroup, Property};
-use effectcraft_raster::Image;
+use aurora_keyframe::Value;
+use aurora_project::build::Ids;
+use aurora_project::{GroupKind, ParamUi, PropGroup, Property};
+use aurora_raster::Image;
 use rayon::prelude::*;
 
 use crate::{Buf, EffectCtx, EffectSpec, Params, p, slider};

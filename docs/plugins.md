@@ -1,6 +1,6 @@
 # Effect plug-ins
 
-EffectCraft loads third-party effects through a small, versioned plug-in API (**API version 1**).
+Aurora loads third-party effects through a small, versioned plug-in API (**API version 1**).
 A plug-in effect behaves exactly like a built-in one: it is listed in Effects & Presets (and the
 Effect menu) under its category, applied by id (`effect.apply {"effect": "org.example.posterize"}`)
 or display name, its parameters are ordinary properties (keyframes, expressions, Effect Controls,
@@ -10,10 +10,10 @@ There are two ways to write one:
 
 | | WebAssembly plug-in | Rust plug-in |
 |---|---|---|
-| What | a `.wasm` (or `.wat`) module | a type implementing `effectcraft_effects::plugin::EffectPlugin` |
-| Loaded by | Effect ▸ Load Effect Plug-in…, `effect.plugins.load {path \| folder}`, or the `Plug-ins` folder next to the settings at start-up | `register_plugin(Arc::new(MyEffect))` in an app that links EffectCraft's crates |
+| What | a `.wasm` (or `.wat`) module | a type implementing `aurora_effects::plugin::EffectPlugin` |
+| Loaded by | Effect ▸ Load Effect Plug-in…, `effect.plugins.load {path \| folder}`, or the `Plug-ins` folder next to the settings at start-up | `register_plugin(Arc::new(MyEffect))` in an app that links Aurora's crates |
 | Sandbox | yes: no imports (no files, clock or network), fuel-limited, at most 1 GiB of memory, deterministic floats | none (it is your code) |
-| Platforms | desktop and CLI (the wasmi interpreter, crate feature `effectcraft-plugin/wasm`); not the web build | everywhere |
+| Platforms | desktop and CLI (the wasmi interpreter, crate feature `aurora-plugin/wasm`); not the web build | everywhere |
 
 `effect.plugins.list` lists what is loaded: `{api, wasm, plugins: [{id, name, category, version,
 author, source, params}]}`.
@@ -38,11 +38,11 @@ Every plug-in describes itself with a JSON manifest:
 ```json
 {
   "api": 1,
-  "id": "org.effectcraft.example.posterize-bands",
+  "id": "org.aurora.example.posterize-bands",
   "name": "Posterize Bands",
   "category": "Stylize",
   "version": "1.0.0",
-  "author": "EffectCraft contributors",
+  "author": "Aurora contributors",
   "description": "Quantizes luminance into tinted bands.",
   "params": [
     {"id": "levels", "name": "Levels", "type": "slider", "default": 4, "min": 2, "max": 64, "sliderMax": 16, "decimals": 0},
@@ -89,9 +89,9 @@ plain Rust (no dependencies):
 ```sh
 cd examples/plugins/posterize-bands
 cargo build --release --target wasm32-unknown-unknown
-# then, in EffectCraft: Effect ▸ Load Effect Plug-in… → target/wasm32-unknown-unknown/release/posterize_bands.wasm
+# then, in Aurora: Effect ▸ Load Effect Plug-in… → target/wasm32-unknown-unknown/release/posterize_bands.wasm
 # or headless:
-effectcraft-cli exec effect.plugins.load '{"path": "target/wasm32-unknown-unknown/release/posterize_bands.wasm"}'
+aurora-cli exec effect.plugins.load '{"path": "target/wasm32-unknown-unknown/release/posterize_bands.wasm"}'
 ```
 
 Any language that compiles to WebAssembly works (C, Zig, AssemblyScript…) as long as the module
@@ -101,7 +101,7 @@ has no imports. `crates/plugin/src/tests.rs` has a plug-in written directly in W
 
 ```rust
 use std::sync::Arc;
-use effectcraft_effects::plugin::*;
+use aurora_effects::plugin::*;
 
 struct Swap(PluginManifest);
 

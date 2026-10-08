@@ -40,7 +40,7 @@ fn initialize_and_list_tools() {
     let mut s = server();
     let r = rpc(&mut s, 1, "initialize", json!({"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "t", "version": "0"}}));
     assert_eq!(r["protocolVersion"], "2025-03-26");
-    assert_eq!(r["serverInfo"]["name"], "effectcraft");
+    assert_eq!(r["serverInfo"]["name"], "aurora");
     assert!(r["capabilities"]["tools"].is_object());
     // Unknown revision: we answer with our latest.
     let r = rpc(&mut s, 2, "initialize", json!({"protocolVersion": "1999-01-01"}));
@@ -181,7 +181,7 @@ fn headless_workflow() {
 /// its error, and `evaluated` is the static value that renders (#163).
 #[test]
 fn expression_syntax_errors_reach_the_reply() {
-    let mut s = McpServer::new(Backend::headless(effectcraft_host::session()));
+    let mut s = McpServer::new(Backend::headless(aurora_host::session()));
     call_json(&mut s, "execute_command", json!({"command": "comp.new", "params": {"name": "A", "width": 64, "height": 64}}));
     call_json(&mut s, "execute_command", json!({"command": "layer.newSolid", "params": {"name": "S", "color": "#ff0000", "width": 32, "height": 8}}));
     let at = |expr: &str| json!({"layer": "S", "path": "transform/rotation", "expression": expr});
@@ -290,7 +290,7 @@ fn bridge_rejects_non_loopback() {
 #[test]
 fn script_ui_and_history_tools() {
     let mut sess = Session::default();
-    effectcraft_script::install(&mut sess);
+    aurora_script::install(&mut sess);
     let mut s = McpServer::new(Backend::headless(sess));
     let code = "var d = new Window('dialog', 'Ask'); var g = d.add('group'); g.add('button', undefined, 'OK', {name: 'ok'}); \
                 if (d.show() == 1) app.project.items.addComp('Answered', 64, 64, 1, 1, 24); 'done'";
@@ -316,7 +316,7 @@ fn script_ui_and_history_tools() {
 #[test]
 fn run_script_round_trip() {
     let mut sess = Session::default();
-    effectcraft_script::install(&mut sess);
+    aurora_script::install(&mut sess);
     let mut s = McpServer::new(Backend::headless(sess));
     let r = call_json(
         &mut s,
@@ -376,7 +376,7 @@ fn every_engine_command_is_reachable_over_mcp() {
     }
     let listed = call_json(&mut s, "list_commands", json!({"schemas": true}));
     let listed: std::collections::HashMap<&str, &Value> = listed.as_array().unwrap().iter().map(|c| (c["id"].as_str().unwrap(), c)).collect();
-    let specs = effectcraft_engine::command_specs();
+    let specs = aurora_engine::command_specs();
     assert_eq!(listed.len(), specs.len());
     for spec in specs {
         let c = listed.get(spec.id).unwrap_or_else(|| panic!("{} not listed", spec.id));

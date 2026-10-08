@@ -1,7 +1,7 @@
 //! Effect menu and Effect Controls gestures.
 
-use effectcraft_project::build::Ids;
-use effectcraft_project::{GroupKind, LayerId, PropGroup, Uid};
+use aurora_project::build::Ids;
+use aurora_project::{GroupKind, LayerId, PropGroup, Uid};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, b_p, bad, f_p, has_layers, layer_mut, layers_p, str_p};
@@ -9,7 +9,7 @@ use crate::{EngineError, Result, Session, cmd};
 
 /// `effect.plugins.list`: the registered plug-in effects (WebAssembly or Rust).
 fn plugins_list(s: &mut Session, _: &Value) -> Result<Value> {
-    use effectcraft_effects::plugin;
+    use aurora_effects::plugin;
     let list: Vec<Value> = plugin::plugins()
         .into_iter()
         .map(|spec| {
@@ -71,7 +71,7 @@ fn plugins_load(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn apply(s: &mut Session, p: &Value) -> Result<Value> {
     let name = str_p(p, "effect").ok_or_else(|| bad("effect.apply", "missing `effect` (id or name)"))?;
-    let spec = effectcraft_effects::lookup(name).ok_or_else(|| bad("effect.apply", format!("unknown effect `{name}`")))?;
+    let spec = aurora_effects::lookup(name).ok_or_else(|| bad("effect.apply", format!("unknown effect `{name}`")))?;
     let (cid, ids) = layers_p(s, p)?;
     if ids.is_empty() {
         return Err(bad("effect.apply", "no layer"));
@@ -81,7 +81,7 @@ fn apply(s: &mut Session, p: &Value) -> Result<Value> {
         ids.iter()
             .filter_map(|id| comp.layer(*id))
             .map(|l| {
-                let (w, h) = effectcraft_render::source_size(&s.project, l);
+                let (w, h) = aurora_render::source_size(&s.project, l);
                 (l.id, if w == 0 { [comp.width as f64, comp.height as f64] } else { [w as f64, h as f64] })
             })
             .collect()
@@ -94,7 +94,7 @@ fn apply(s: &mut Session, p: &Value) -> Result<Value> {
             let fx = l.props.sub_mut("effects").ok_or_else(|| bad("effect.apply", "this layer type has no effects"))?;
             let same = fx.groups().filter(|g| g.match_id == spec.id).count();
             let name = if same == 0 { spec.name.to_string() } else { format!("{} {}", spec.name, same + 1) };
-            let g = effectcraft_effects::instantiate(spec, &mut Ids(&mut next), &name, *size);
+            let g = aurora_effects::instantiate(spec, &mut Ids(&mut next), &name, *size);
             out.push(g.uid);
             fx.children.push(g.into());
             proj.next_id = next;
@@ -116,7 +116,7 @@ fn apply(s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!({"effects": uids, "paths": paths, "effect": spec.id}))
 }
 
-fn find_fx(s: &Session, p: &Value, cmd: &str) -> Result<(effectcraft_project::ItemId, effectcraft_project::LayerId, Uid)> {
+fn find_fx(s: &Session, p: &Value, cmd: &str) -> Result<(aurora_project::ItemId, aurora_project::LayerId, Uid)> {
     let (cid, lid) = super::layer_p(s, p, cmd)?;
     let layer = s.project.comp(cid).and_then(|c| c.layer(lid)).ok_or(EngineError::NoComp)?;
     let fx = layer.effects().ok_or_else(|| bad(cmd, "no effects"))?;
@@ -149,11 +149,11 @@ fn pick_color(s: &mut Session, p: &Value) -> Result<Value> {
         (None, Some(path)) => g.prop(path),
         _ => return Err(bad(cmd, "missing `param` (e.g. `screenColour`) or `prop` (uid)")),
     }
-    .filter(|pr| pr.ui == effectcraft_project::ParamUi::Color)
+    .filter(|pr| pr.ui == aurora_project::ParamUi::Color)
     .ok_or_else(|| bad(cmd, "not a colour parameter of this effect"))?;
     let t = super::time_p(s, p, Some(comp));
-    let ctx = effectcraft_render::EvalCtx { project: &s.project, comp_id: cid, comp, time: t, expr: s.expr.as_deref(), footage: None };
-    let mut r = effectcraft_render::Renderer::new(&s.project, &*s.footage, effectcraft_render::RenderOpts::default());
+    let ctx = aurora_render::EvalCtx { project: &s.project, comp_id: cid, comp, time: t, expr: s.expr.as_deref(), footage: None };
+    let mut r = aurora_render::Renderer::new(&s.project, &*s.footage, aurora_render::RenderOpts::default());
     r.expr = s.expr.as_deref();
     r.cache = Some(&s.layer_cache);
     let buf = r.layer_input(&ctx, layer, index).ok_or_else(|| bad(cmd, "this layer has no pixels"))?;
@@ -368,12 +368,12 @@ fn reset(s: &mut Session, p: &Value) -> Result<Value> {
     let (cid, lid, uid) = find_fx(s, p, "effect.reset")?;
     let comp = s.project.comp(cid).ok_or(EngineError::NoComp)?;
     let layer = comp.layer(lid).ok_or(EngineError::NoComp)?;
-    let (w, h) = effectcraft_render::source_size(&s.project, layer);
+    let (w, h) = aurora_render::source_size(&s.project, layer);
     let size = if w == 0 { [comp.width as f64, comp.height as f64] } else { [w as f64, h as f64] };
     let lt = layer.layer_time(s.time());
     let g = layer.effects().and_then(|fx| fx.groups().find(|g| g.uid == uid)).ok_or_else(|| bad("effect.reset", "gone"))?;
     let spec = match &g.kind {
-        GroupKind::Effect { effect } => effectcraft_effects::find(effect),
+        GroupKind::Effect { effect } => aurora_effects::find(effect),
         _ => None,
     }
     .ok_or_else(|| bad("effect.reset", "unknown effect"))?;
@@ -382,7 +382,7 @@ fn reset(s: &mut Session, p: &Value) -> Result<Value> {
         let g = layer_mut(proj, cid, lid)?.props.find_group_mut(uid).ok_or_else(|| bad("effect.reset", "gone"))?;
         for ps in &spec.params {
             if let Some(pr) = g.get_mut(ps.id) {
-                pr.set_value_at(lt, effectcraft_effects::default_value(ps, size));
+                pr.set_value_at(lt, aurora_effects::default_value(ps, size));
             }
         }
         Ok(())
@@ -403,10 +403,10 @@ fn last(s: &mut Session, p: &Value) -> Result<Value> {
 
 fn list(_: &mut Session, p: &Value) -> Result<Value> {
     let filter = str_p(p, "filter").map(str::to_lowercase);
-    let v: Vec<Value> = effectcraft_effects::all()
+    let v: Vec<Value> = aurora_effects::all()
         .into_iter()
         .filter(|e| {
-            filter.as_ref().is_none_or(|f| effectcraft_effects::name_matches(e, f) || e.id.contains(f.as_str()) || e.category.to_ascii_lowercase().contains(f))
+            filter.as_ref().is_none_or(|f| aurora_effects::name_matches(e, f) || e.id.contains(f.as_str()) || e.category.to_ascii_lowercase().contains(f))
         })
         .map(|e| {
             json!({"id": e.id, "name": e.name, "category": e.category, "gpu": e.gpu, "float": e.float, "params": e.params.iter().map(|p| json!({"id": p.id, "name": p.name, "default": p.default.to_json()})).collect::<Vec<_>>()})

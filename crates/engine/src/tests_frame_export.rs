@@ -29,7 +29,7 @@ fn photoshop_layers_writes_one_psd_layer_per_comp_layer() {
     let path = dir.join("frame.psd").to_string_lossy().to_string();
     let r = s.execute("comp.saveFrameAsPsd", json!({"path": path})).unwrap();
     assert_eq!(r["layers"], 2);
-    let psd = effectcraft_psd::Psd::parse(std::fs::read(&path).unwrap()).unwrap();
+    let psd = aurora_psd::Psd::parse(std::fs::read(&path).unwrap()).unwrap();
     assert_eq!((psd.width, psd.height), (32, 32));
     let names: Vec<&str> = psd.layers.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["Red", "Blue.Box"], "bottom first");

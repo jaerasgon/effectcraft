@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 512"><g><defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#070b1a"/><stop offset="1" stop-color="#14224a"/></linearGradient>
+<linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ef2b0" stop-opacity=".95"/><stop offset=".55" stop-color="#2bd4e8" stop-opacity=".45"/><stop offset="1" stop-color="#2bd4e8" stop-opacity="0"/></linearGradient>
+<linearGradient id="g2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".9"/><stop offset=".6" stop-color="#6d6af0" stop-opacity=".4"/><stop offset="1" stop-color="#6d6af0" stop-opacity="0"/></linearGradient>
+<linearGradient id="g3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff5fb0" stop-opacity=".85"/><stop offset=".6" stop-color="#e0368f" stop-opacity=".35"/><stop offset="1" stop-color="#e0368f" stop-opacity="0"/></linearGradient>
+</defs>
+<clipPath id="c"><rect width="512" height="512" rx="112"/></clipPath><g clip-path="url(#c)">
+<rect width="512" height="512" fill="url(#sky)"/>
+<path d="M-10 250 C 90 150, 170 330, 270 200 S 440 120, 530 190 L 530 470 L -10 470 Z" fill="url(#g3)"/>
+<path d="M-10 300 C 80 190, 190 360, 290 240 S 450 170, 530 240 L 530 500 L -10 500 Z" fill="url(#g2)"/>
+<path d="M-10 350 C 100 230, 200 400, 300 290 S 440 230, 530 300 L 530 512 L -10 512 Z" fill="url(#g1)"/>
+<path d="M-10 350 C 100 230, 200 400, 300 290 S 440 230, 530 300" fill="none" stroke="#b6ffe6" stroke-opacity=".9" stroke-width="5" stroke-linecap="round"/>
+<g fill="#ffffff"><circle cx="96" cy="86" r="3.5"/><circle cx="410" cy="64" r="2.5" opacity=".8"/><circle cx="250" cy="120" r="2" opacity=".7"/><circle cx="452" cy="150" r="3"/><circle cx="160" cy="40" r="2" opacity=".6"/><circle cx="330" cy="56" r="3" opacity=".9"/></g>
+</g></g><text x="600" y="330" font-family="Inter, Helvetica, Arial, sans-serif" font-size="230" font-weight="600" letter-spacing="-4" fill="#0b0b0c">Aurora</text></svg>

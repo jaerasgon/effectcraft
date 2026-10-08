@@ -6,7 +6,7 @@
 //! ▸ match names). Properties without a documented equivalent keep our own match id
 //! (`perChar3d`, `ec.blur.bilateral`), which `property()` and `addProperty()` accept too.
 
-use effectcraft_project::{LayerSource, Node};
+use aurora_project::{LayerSource, Node};
 
 /// Match name of a layer (its root property group).
 pub fn layer(source: &LayerSource) -> &'static str {

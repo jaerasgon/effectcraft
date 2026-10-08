@@ -67,6 +67,10 @@ pub mod warp_stab;
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use aurora_keyframe::Value;
+use aurora_project::build::Ids;
+use aurora_project::{GroupKind, ParamUi, PropGroup, Property};
+pub use aurora_raster::{AuxChannels, Image};
 pub use card3d::{CompLight, CompScene};
 pub use color_fx::{COLORAMA_PRESETS, ColoramaPalette};
 pub use color_fx::{
@@ -79,15 +83,11 @@ pub use distort::transform_shutter;
 pub use distort2::{MAGNIFY_MODES, bezier_grid, parse_mesh};
 pub use distort3::{RESHAPE_POINTS, ReshapeSetup, SmearSetup, reshape_setup, smear_setup, warp_inverse_map};
 pub use distort4::liquify_mesh;
-use effectcraft_keyframe::Value;
-use effectcraft_project::build::Ids;
-use effectcraft_project::{GroupKind, ParamUi, PropGroup, Property};
-pub use effectcraft_raster::{AuxChannels, Image};
 pub use misc::{INVERT_ALPHA, INVERT_CHANNELS, glow_ab_t, glow_operation};
 pub use sim::particle_state;
 pub use sim3::{PgBlit, PgPlan, playground_plan, playground_state};
 pub use stylize2::strobe_on;
-// CPU helpers the GPU kernels share (effectcraft-gpu).
+// CPU helpers the GPU kernels share (aurora-gpu).
 pub use blur2::{camera_lens_plain, camera_lens_spans};
 pub use generate::gen_mode;
 pub use generate2::pattern_kind as cell_pattern_kind;
@@ -98,14 +98,14 @@ pub use generate3::{
 pub use noise::GrainLook;
 pub use textfx::{BoltPlan, TextLook, TextPass, bolt_plan, text_passes};
 pub use transition::place_layer;
-// effectcraft-gpu fx_noise.
+// aurora-gpu fx_noise.
 pub use keying2::{InnerOuterPlan, inner_outer_plan};
 pub use noise::remove_grain_level;
 pub use noise3::{FractalGpu, fractal_gpu};
 pub use stylize3::{BumpLight, bump_layer_id};
 pub use textfx::{TextLayer, text_layer};
 pub use time_fx::{PixelMotion, TimewarpPlan, TwStep, posterized_time, time_frames, timewarp_crop, timewarp_plan};
-// effectcraft-gpu fx_tone.
+// aurora-gpu fx_tone.
 pub use ocio::color_stabilizer_maps;
 // GPU effects, part B (3D Channel, Immersive Video, colour management, simulation render passes).
 pub use channel3d::{CRYPTO_LAYERS, id_color, selection_hashes};
@@ -214,14 +214,14 @@ pub fn flatten_params(g: &PropGroup, eval: &mut dyn FnMut(&Property) -> Value) -
         let mut gi = 0;
         for c in &g.children {
             match c {
-                effectcraft_project::Node::Prop(p) => {
+                aurora_project::Node::Prop(p) => {
                     let v = eval(p);
                     if !mpre.is_empty() {
                         out.entry(format!("{mpre}{}", p.match_id)).or_insert_with(|| v.clone());
                     }
                     out.insert(format!("{pre}{}", p.match_id), v);
                 }
-                effectcraft_project::Node::Group(sg) => {
+                aurora_project::Node::Group(sg) => {
                     gi += 1;
                     let sp = format!("{pre}#{gi}/");
                     out.insert(format!("{sp}@match"), Value::Str(sg.match_id.clone()));
@@ -340,7 +340,7 @@ pub struct EffectEnv<'a> {
     /// Index of the running effect in its layer's stack (for [`EffectHost::self_at`]).
     pub effect_index: usize,
     /// The project's working colour space (`None` = unmanaged, treated as sRGB).
-    pub working_space: Option<effectcraft_color::ColorSpace>,
+    pub working_space: Option<aurora_color::ColorSpace>,
     /// Working-space pixels are linear light (Linearize Working Space).
     pub working_linear: bool,
     /// The composition's shutter (angle and phase in degrees, samples per frame) when both the
@@ -798,7 +798,7 @@ fn nested_group<'a>(g: &'a mut PropGroup, ids: &mut Ids, path: &str) -> Option<&
     }
 }
 
-/// Effects the GPU compositor (`effectcraft-gpu`) implements with the CPU effect's semantics
+/// Effects the GPU compositor (`aurora-gpu`) implements with the CPU effect's semantics
 /// (Mercury GPU Acceleration; the Effects & Presets GPU badge). Expression controls are
 /// pass-throughs and count as GPU effects too.
 pub const GPU_EFFECTS: &[&str] = &[
@@ -829,7 +829,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.stylize.mosaic",
     "ec.stylize.findedges",
     "ec.stylize.emboss",
-    // Blur, transition and generate family (effectcraft-gpu `fx_generate`).
+    // Blur, transition and generate family (aurora-gpu `fx_generate`).
     "ec.blur.radial",
     "ec.blur.cameralens",
     "ec.blur.ccradialfast",
@@ -843,7 +843,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.generate.fourcolor",
     "ec.noise.noise",
     "ec.noise.addgrain",
-    // effectcraft-gpu fx_color
+    // aurora-gpu fx_color
     "ec.color.colorbalance",
     "ec.color.vibrance",
     "ec.color.lumetri",
@@ -854,7 +854,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.color.selectivecolor",
     "ec.key.linearcolor",
     "ec.keying.keylight",
-    // effectcraft-gpu fx_key (keying, matte, channel)
+    // aurora-gpu fx_key (keying, matte, channel)
     "ec.key.colorkey",
     "ec.key.luma",
     "ec.key.colorrange",
@@ -880,7 +880,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.channel.blend",
     "ec.channel.calculations",
     "ec.channel.compoundarithmetic",
-    // effectcraft-gpu fx_tone (colour correction)
+    // aurora-gpu fx_tone (colour correction)
     "ec.color.levelsic",
     "ec.color.gammapedestalgain",
     "ec.color.photofilter",
@@ -901,7 +901,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.color.shadowhighlight",
     "ec.color.cccolorneutralizer",
     "ec.color.colorstabilizer",
-    // effectcraft-gpu fx_stylize (stylize, distort)
+    // aurora-gpu fx_stylize (stylize, distort)
     "ec.stylize.posterize",
     "ec.stylize.threshold",
     "ec.stylize.ccthreshold",
@@ -933,7 +933,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.distort.ccripplepulse",
     "ec.distort.ccpowerpin",
     "ec.distort.ccflomotion",
-    // effectcraft-gpu fx_noise (noise, blur, time)
+    // aurora-gpu fx_noise (noise, blur, time)
     "ec.noise.turbulent",
     "ec.noise.median",
     "ec.noise.medianlegacy",
@@ -951,7 +951,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.channel.minimax",
     "ec.time.echo",
     "ec.time.posterizetime",
-    // effectcraft-gpu fx_warp (warps, cartoon)
+    // aurora-gpu fx_warp (warps, cartoon)
     "ec.distort.warp",
     "ec.distort.bezierwarp",
     "ec.distort.ccbendit",
@@ -960,7 +960,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.distort.reshape",
     "ec.stylize.coloremboss",
     "ec.stylize.cartoon",
-    // effectcraft-gpu fx_extra (shapes, bevels)
+    // aurora-gpu fx_extra (shapes, bevels)
     "ec.generate.circle",
     "ec.generate.ellipse",
     "ec.transition.iriswipe",
@@ -1011,7 +1011,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.sim.shatter",
     "ec.sim.carddance",
     "ec.transition.cardwipe",
-    // effectcraft-gpu fx_particles (particle render passes)
+    // aurora-gpu fx_particles (particle render passes)
     "ec.sim.ccparticleworld",
     "ec.sim.ccparticlesystems2",
     "ec.sim.particleplayground",
@@ -1019,12 +1019,12 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.sim.ccpixelpolly",
     "ec.sim.ccscatterize",
     "ec.noise.curlnoise",
-    // effectcraft-gpu fx_light (the CC light family)
+    // aurora-gpu fx_light (the CC light family)
     "ec.generate.cclightrays",
     "ec.generate.cclightburst",
     "ec.generate.cclightsweep",
     "ec.transition.cclightwipe",
-    // effectcraft-gpu fx_transition (transitions, perspective)
+    // aurora-gpu fx_transition (transitions, perspective)
     "ec.transition.blockdissolve",
     "ec.transition.ccglasswipe",
     "ec.transition.ccgridwipe",
@@ -1043,17 +1043,17 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.perspective.ccspotlight",
     "ec.perspective.ccenvironment",
     "ec.perspective.3dglasses",
-    // effectcraft-gpu fx_text (glyph coverage rasterised on the CPU)
+    // aurora-gpu fx_text (glyph coverage rasterised on the CPU)
     "ec.text.numbers",
     "ec.text.timecode",
-    // effectcraft-gpu fx_time (frames fetched by the host, combined on the GPU)
+    // aurora-gpu fx_time (frames fetched by the host, combined on the GPU)
     "ec.time.timedifference",
     "ec.time.timedisplacement",
     "ec.time.ccforcemotionblur",
     "ec.time.ccwidetime",
     "ec.time.pixelmotionblur",
     "ec.time.timewarp",
-    // effectcraft-gpu fx_pixel2 (pixel ports, part C)
+    // aurora-gpu fx_pixel2 (pixel ports, part C)
     "ec.blur.cccross",
     "ec.blur.ccradial",
     "ec.blur.ccvector",
@@ -1074,7 +1074,7 @@ pub const GPU_EFFECTS: &[&str] = &[
     "ec.key.innerouter",
     "ec.key.ccsimplewireremoval",
     "ec.obsolete.basic3d",
-    // effectcraft-gpu fx_gen2 (generators, part C: CPU plans rasterised on the GPU)
+    // aurora-gpu fx_gen2 (generators, part C: CPU plans rasterised on the GPU)
     "ec.obsolete.lightning",
     "ec.generate.advancedlightning",
     "ec.generate.beam",

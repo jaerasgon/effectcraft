@@ -2,16 +2,16 @@
 //! in one gesture (the drag used to end after the first frame), Shift-snapping, and Ctrl+C /
 //! Ctrl+V, which the windowing layer delivers as clipboard events rather than key presses.
 
-use effectcraft_engine::Session;
-use effectcraft_engine::project::LayerId;
-use effectcraft_ui_egui::EffectcraftApp;
+use aurora_engine::Session;
+use aurora_engine::project::LayerId;
+use aurora_ui_egui::AuroraApp;
 use egui::{Event, Pos2, pos2};
 use egui_kittest::Harness;
 use serde_json::json;
 
 /// A 4 s, 30 fps comp with a Box layer whose Opacity has keys at 0 s and 1 s, revealed in the
 /// Timeline; returns the harness, the layer and the property uid.
-fn harness() -> (Harness<'static, EffectcraftApp>, LayerId, u64) {
+fn harness() -> (Harness<'static, AuroraApp>, LayerId, u64) {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Keys", "width": 320, "height": 180, "frameRate": 30, "duration": 4})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Box", "color": "#e04020", "width": 80, "height": 80})).unwrap();
@@ -21,21 +21,21 @@ fn harness() -> (Harness<'static, EffectcraftApp>, LayerId, u64) {
     }
     let uid = s.active_comp().unwrap().layer(id).unwrap().props.prop("transform/opacity").unwrap().uid;
     s.execute("layer.select", json!({"layers": [id.0]})).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| AuroraApp::new(s));
     h.run_steps(3);
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.opacity", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.opacity", json!({})).unwrap();
     h.run_steps(4);
     (h, id, uid)
 }
 
-fn key_times(h: &Harness<'_, EffectcraftApp>, id: LayerId) -> Vec<f64> {
+fn key_times(h: &Harness<'_, AuroraApp>, id: LayerId) -> Vec<f64> {
     let l = h.state().session.active_comp().unwrap().layer(id).unwrap().clone();
     l.props.prop("transform/opacity").unwrap().keys.iter().map(|k| (k.time.seconds() * 30.0).round() / 30.0).collect()
 }
 
 /// Screen centres of the property's keys, left to right.
-fn keys(h: &Harness<'_, EffectcraftApp>, uid: u64) -> Vec<Pos2> {
+fn keys(h: &Harness<'_, AuroraApp>, uid: u64) -> Vec<Pos2> {
     let mut ks: Vec<Pos2> =
         h.state().auto.query(&format!("timeline.key.{uid}.")).iter().map(|e| pos2(e.rect[0] + e.rect[2] / 2.0, e.rect[1] + e.rect[3] / 2.0)).collect();
     ks.sort_by(|a, b| a.x.total_cmp(&b.x));
@@ -43,7 +43,7 @@ fn keys(h: &Harness<'_, EffectcraftApp>, uid: u64) -> Vec<Pos2> {
 }
 
 /// Press at `from`, move to `to` in small steps (a real drag), release.
-fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, modifiers: egui::Modifiers) {
+fn drag(h: &mut Harness<'_, AuroraApp>, from: Pos2, to: Pos2, modifiers: egui::Modifiers) {
     h.input_mut().events.push(Event::PointerMoved(from));
     h.step();
     h.input_mut().events.push(Event::ModifiersChanged(modifiers));
@@ -73,7 +73,7 @@ fn a_key_drag_follows_the_pointer_for_its_whole_length() {
     let steps = h.state().session.history.undo.iter().filter(|(l, _)| l == "Move Keyframes").count();
     assert_eq!(steps, 1, "one undo step per drag");
     // Shift snaps it to the current time indicator (at 0.5 s), from a few pixels away.
-    h.state_mut().session.set_time(effectcraft_engine::time::Tick::from_seconds_f64(0.5));
+    h.state_mut().session.set_time(aurora_engine::time::Tick::from_seconds_f64(0.5));
     h.run_steps(2);
     let ks = keys(&h, uid);
     let near = pos2(ks[0].x + px_per_s * 0.5 + 4.0, ks[1].y);
@@ -105,16 +105,16 @@ fn ctrl_c_and_ctrl_v_copy_and_paste_keys_at_the_current_time() {
             _ => None,
         })
         .collect();
-    assert_eq!(copied, ["EffectCraft: 1 keyframe"], "the system clipboard is filled, so Ctrl+V sends a paste event");
+    assert_eq!(copied, ["Aurora: 1 keyframe"], "the system clipboard is filled, so Ctrl+V sends a paste event");
     assert!(h.state().session.state.clip_is_keys);
     // Move to 3 s, Ctrl+V: the key lands there.
-    h.state_mut().session.set_time(effectcraft_engine::time::Tick::from_seconds_f64(3.0));
-    h.input_mut().events.push(Event::Paste("EffectCraft: 1 keyframe".into()));
+    h.state_mut().session.set_time(aurora_engine::time::Tick::from_seconds_f64(3.0));
+    h.input_mut().events.push(Event::Paste("Aurora: 1 keyframe".into()));
     h.run_steps(2);
     assert_eq!(key_times(&h, id), vec![0.0, 1.0, 3.0]);
 }
 
-fn click_with(h: &mut Harness<'_, EffectcraftApp>, p: Pos2, modifiers: egui::Modifiers) {
+fn click_with(h: &mut Harness<'_, AuroraApp>, p: Pos2, modifiers: egui::Modifiers) {
     h.input_mut().events.push(Event::PointerMoved(p));
     h.step();
     h.input_mut().events.push(Event::ModifiersChanged(modifiers));
@@ -136,16 +136,15 @@ fn shift_click_toggles_and_ctrl_click_switches_interpolation() {
     assert_eq!(h.state().session.state.selected_keys.len(), 2, "Shift+click adds");
     click_with(&mut h, ks[1], shift);
     assert_eq!(h.state().session.state.selected_keys.len(), 1, "and takes out again");
-    let key =
-        |h: &Harness<'_, EffectcraftApp>| h.state().session.active_comp().unwrap().layer(id).unwrap().props.prop("transform/opacity").unwrap().keys[0].clone();
+    let key = |h: &Harness<'_, AuroraApp>| h.state().session.active_comp().unwrap().layer(id).unwrap().props.prop("transform/opacity").unwrap().keys[0].clone();
     // Ctrl+click: Linear → Auto Bezier → Linear.
     click_with(&mut h, ks[0], egui::Modifiers::COMMAND);
     assert!(key(&h).auto_bezier, "Auto Bezier");
     click_with(&mut h, ks[0], egui::Modifiers::COMMAND);
-    assert_eq!(key(&h).out_interp, effectcraft_engine::keyframe::Interp::Linear);
+    assert_eq!(key(&h).out_interp, aurora_engine::keyframe::Interp::Linear);
     // Ctrl+Alt+click: Hold.
     click_with(&mut h, ks[0], egui::Modifiers { alt: true, ..egui::Modifiers::COMMAND });
-    assert_eq!(key(&h).out_interp, effectcraft_engine::keyframe::Interp::Hold);
+    assert_eq!(key(&h).out_interp, aurora_engine::keyframe::Interp::Hold);
 }
 
 /// Clicking a key in the Timeline selects its property and layer too, as in After Effects, so
@@ -173,13 +172,13 @@ fn graph_editor_drags_move_every_selected_key_and_shift_keeps_an_axis() {
     s.execute("keys.selectAll", json!({})).unwrap();
     h.state_mut().ui.timeline.graph_editor = true;
     h.run_steps(4);
-    let at = |h: &Harness<'_, EffectcraftApp>, i: usize| {
+    let at = |h: &Harness<'_, AuroraApp>, i: usize| {
         let e = h.state().auto.find(&format!("timeline.graph.key.{uid}.0.{i}")).unwrap_or_else(|| panic!("no graph key {i}")).clone();
         pos2(e.rect[0] + e.rect[2] / 2.0, e.rect[1] + e.rect[3] / 2.0)
     };
     let (k0, k1) = (at(&h, 0), at(&h, 1));
     let px_per_s = k1.x - k0.x;
-    let values = |h: &Harness<'_, EffectcraftApp>| -> Vec<f64> {
+    let values = |h: &Harness<'_, AuroraApp>| -> Vec<f64> {
         h.state().session.active_comp().unwrap().layer(id).unwrap().props.prop("transform/opacity").unwrap().keys.iter().map(|k| k.value.as_f64()).collect()
     };
     // Shift: only along time, both keys, by 0.5 s.
@@ -209,7 +208,7 @@ fn double_click_a_key_to_edit_its_value() {
     }
     h.step();
     h.run_steps(2);
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::Form), "the value dialog opened");
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::Form), "the value dialog opened");
     h.run_steps(2);
     assert!(h.state().auto.find("form.field.value").is_some(), "one Opacity field");
     // OK keeps the key where it is (the dialog edits the value only).
@@ -231,7 +230,7 @@ fn k_follows_the_revealed_properties_and_auto_select_picks_the_speed_graph_for_p
     let (mut h, id, _) = harness();
     // A Rotation key at 2 s on a property that isn't revealed: K skips it.
     h.state_mut().session.execute("prop.addKey", json!({"layer": id.0, "path": "transform/rotation", "time": 2.0, "value": 45})).unwrap();
-    h.state_mut().session.set_time(effectcraft_engine::time::Tick::from_seconds_f64(1.0));
+    h.state_mut().session.set_time(aurora_engine::time::Tick::from_seconds_f64(1.0));
     h.run_steps(2);
     h.input_mut().events.push(Event::Key { key: egui::Key::K, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() });
     h.run_steps(2);

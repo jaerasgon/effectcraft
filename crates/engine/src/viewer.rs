@@ -5,12 +5,12 @@
 
 use std::sync::Arc;
 
-use effectcraft_color::{ColorSpace, space};
-use effectcraft_geom::{Mat3, vec2};
-use effectcraft_project::{Layer, LayerId};
-use effectcraft_raster::Image;
-use effectcraft_render::EvalCtx;
-use effectcraft_time::Tick;
+use aurora_color::{ColorSpace, space};
+use aurora_geom::{Mat3, vec2};
+use aurora_project::{Layer, LayerId};
+use aurora_raster::Image;
+use aurora_render::EvalCtx;
+use aurora_time::Tick;
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------- snapping
@@ -139,7 +139,7 @@ pub fn layer_features(ctx: &EvalCtx, layer: &Layer) -> Vec<[f64; 2]> {
 
 /// The corners, edge midpoints and centre of a layer's content box (`m`: layer → comp).
 fn box_features(ctx: &EvalCtx, layer: &Layer, m: &Mat3) -> Vec<[f64; 2]> {
-    let Some(b) = effectcraft_render::content_bounds(ctx, layer) else { return vec![] };
+    let Some(b) = aurora_render::content_bounds(ctx, layer) else { return vec![] };
     let (cx, cy) = ((b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0);
     [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]], [cx, b[1]], [b[2], cy], [cx, b[3]], [b[0], cy], [cx, cy]]
         .into_iter()
@@ -172,7 +172,7 @@ pub fn layer_vertices(ctx: &EvalCtx, layer: &Layer) -> Vec<[f64; 2]> {
         }
     }
     for (uid, sp) in shape_paths(ctx, layer) {
-        let pm = m * effectcraft_render::shapes::item_matrix(ctx, layer, uid).unwrap_or(Mat3::IDENTITY);
+        let pm = m * aurora_render::shapes::item_matrix(ctx, layer, uid).unwrap_or(Mat3::IDENTITY);
         out.extend(sp.vertices.iter().map(|v| {
             let q = pm.apply(vec2(v[0], v[1]));
             [q.x, q.y]
@@ -182,10 +182,10 @@ pub fn layer_vertices(ctx: &EvalCtx, layer: &Layer) -> Vec<[f64; 2]> {
 }
 
 /// Shape-layer Path items (uid, evaluated path in the item's group space).
-pub fn shape_paths(ctx: &EvalCtx, layer: &Layer) -> Vec<(u64, effectcraft_keyframe::ShapePath)> {
+pub fn shape_paths(ctx: &EvalCtx, layer: &Layer) -> Vec<(u64, aurora_keyframe::ShapePath)> {
     let mut out = vec![];
     let Some(c) = layer.props.sub("contents") else { return out };
-    fn walk(ctx: &EvalCtx, layer: &Layer, g: &effectcraft_project::PropGroup, out: &mut Vec<(u64, effectcraft_keyframe::ShapePath)>) {
+    fn walk(ctx: &EvalCtx, layer: &Layer, g: &aurora_project::PropGroup, out: &mut Vec<(u64, aurora_keyframe::ShapePath)>) {
         for sub in g.groups() {
             if sub.match_id == "path"
                 && let Some(sp) = sub.get("path").map(|pr| ctx.value(layer, pr)).and_then(|v| v.as_path().cloned())
@@ -563,9 +563,9 @@ impl IccLut {
     }
 
     /// The parsed profile.
-    pub fn profile(&self) -> Option<effectcraft_color::icc::LutProfile> {
-        match effectcraft_color::icc::parse_profile(self.0.as_deref()?) {
-            Ok(effectcraft_color::icc::Profile::Lut(p)) => Some(p),
+    pub fn profile(&self) -> Option<aurora_color::icc::LutProfile> {
+        match aurora_color::icc::parse_profile(self.0.as_deref()?) {
+            Ok(aurora_color::icc::Profile::Lut(p)) => Some(p),
             _ => None,
         }
     }
@@ -589,14 +589,14 @@ impl std::fmt::Debug for IccLut {
 
 impl Serialize for IccLut {
     fn serialize<S: serde::Serializer>(&self, s: S) -> std::result::Result<S::Ok, S::Error> {
-        s.serialize_str(&self.0.as_deref().map(|b| effectcraft_track::roto::rle::base64_encode(b)).unwrap_or_default())
+        s.serialize_str(&self.0.as_deref().map(|b| aurora_track::roto::rle::base64_encode(b)).unwrap_or_default())
     }
 }
 
 impl<'de> Deserialize<'de> for IccLut {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> std::result::Result<Self, D::Error> {
         let s = String::deserialize(d)?;
-        Ok(IccLut(effectcraft_track::roto::rle::base64_decode(&s).filter(|b| !b.is_empty()).map(Arc::new)))
+        Ok(IccLut(aurora_track::roto::rle::base64_decode(&s).filter(|b| !b.is_empty()).map(Arc::new)))
     }
 }
 
@@ -654,7 +654,7 @@ impl CustomRgb {
     /// whole ([`CustomRgb::icc_lut`]); its numbers are the primaries' and white's colours
     /// (adapted to D65) and the gamma that fits its neutral ramp.
     pub fn from_icc(bytes: &[u8], path: &str) -> std::result::Result<CustomRgb, String> {
-        use effectcraft_color::icc::{Profile, parse_profile};
+        use aurora_color::icc::{Profile, parse_profile};
         let stem = || std::path::Path::new(path).file_stem().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "ICC Profile".into());
         let name = |d: &str| if d.trim().is_empty() { stem() } else { d.trim().to_string() };
         let r = |c: [f64; 2]| c.map(|v| (v * 1e5).round() / 1e5);
@@ -676,7 +676,7 @@ impl CustomRgb {
             Profile::Lut(p) => {
                 let (prims, _, gamma) = p.approximate();
                 // The PCS is D50-relative: the device white shows as the viewer's D65.
-                let a = space::bradford(effectcraft_color::icc::D50, D65);
+                let a = space::bradford(aurora_color::icc::D50, D65);
                 let adapt = |c: [f64; 2]| {
                     let v = space::mul_vec(&a, [c[0] / c[1], 1.0, (1.0 - c[0] - c[1]) / c[1]]);
                     let sum = v[0] + v[1] + v[2];
@@ -762,7 +762,7 @@ pub struct DisplayColor {
     sim: Option<(Conv, Option<Conv>)>,
     display: Option<Conv>,
     /// A LUT-based My Custom RGB profile: the whole simulation baked into a 3D LUT.
-    lut: Option<Arc<effectcraft_color::icc::Lut3d>>,
+    lut: Option<Arc<aurora_color::icc::Lut3d>>,
 }
 
 impl DisplayColor {
@@ -877,8 +877,8 @@ const SIM_LUT_SIZE_INVERTED: usize = 17;
 /// (`B2A0`, or `A2B0` inverted), clipped and quantised to 8 bits like the real output → what the
 /// device shows (`A2B0`; Preserve RGB: the numbers taken as sRGB) → the display. Baked once per
 /// profile and conversion (the last one is cached).
-fn lut_simulation(custom: &CustomRgb, src: Prof, display: ColorSpace, preserve: bool) -> Option<Arc<effectcraft_color::icc::Lut3d>> {
-    type Cache = Option<(u64, Arc<effectcraft_color::icc::Lut3d>)>;
+fn lut_simulation(custom: &CustomRgb, src: Prof, display: ColorSpace, preserve: bool) -> Option<Arc<aurora_color::icc::Lut3d>> {
+    type Cache = Option<(u64, Arc<aurora_color::icc::Lut3d>)>;
     static CACHE: std::sync::Mutex<Cache> = std::sync::Mutex::new(None);
     custom.icc_lut.0.as_ref()?;
     let key = {
@@ -893,13 +893,13 @@ fn lut_simulation(custom: &CustomRgb, src: Prof, display: ColorSpace, preserve: 
         return Some(l.clone());
     }
     let prof = custom.icc_lut.profile()?;
-    let to_d50 = space::mul(&space::bradford(D65, effectcraft_color::icc::D50), &src.xyz);
-    let from_d50 = space::bradford(effectcraft_color::icc::D50, D65);
+    let to_d50 = space::mul(&space::bradford(D65, aurora_color::icc::D50), &src.xyz);
+    let from_d50 = space::bradford(aurora_color::icc::D50, D65);
     let disp = Prof::of(display, false);
     let disp_inv = space::invert(&disp.xyz);
     let srgb_to_display = Conv::new(Prof::new(P709, Curve::Srgb), disp);
     let size = if prof.b2a.is_some() { SIM_LUT_SIZE } else { SIM_LUT_SIZE_INVERTED };
-    let lut = effectcraft_color::icc::Lut3d::bake(size, |c| {
+    let lut = aurora_color::icc::Lut3d::bake(size, |c| {
         let lin = c.map(|v| src.curve.decode(v as f32) as f64);
         let dev = prof.from_xyz(space::mul_vec(&to_d50, lin), c).map(|v| (v.clamp(0.0, 1.0) * 255.0).round() / 255.0);
         if preserve {
@@ -920,7 +920,7 @@ fn lut_simulation(custom: &CustomRgb, src: Prof, display: ColorSpace, preserve: 
 /// Take Snapshot (Shift+F5): a rendered frame kept for comparison (Show Snapshot, F5).
 #[derive(Clone, Debug)]
 pub struct Snapshot {
-    pub comp: effectcraft_project::ItemId,
+    pub comp: aurora_project::ItemId,
     pub time: Tick,
     /// Render scale the image was taken at.
     pub scale: f64,

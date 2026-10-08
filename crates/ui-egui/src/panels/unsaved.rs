@@ -11,7 +11,7 @@ use egui::{Color32, vec2};
 use serde_json::{Value, json};
 
 use crate::theme::Tokens;
-use crate::{Dialog, EffectcraftApp};
+use crate::{AuroraApp, Dialog};
 
 /// Commands that replace or close the open project (Quit is asked when the window closes).
 const CLOSING: &[&str] = &["file.newProject", "file.open", "file.openRecent", "file.closeProject", "file.revert", "file.openDemoProject", "templates.create"];
@@ -28,14 +28,14 @@ pub struct Pending {
 
 /// Whether `id` needs the prompt first. When it does, the prompt opens holding the command and
 /// the caller must not run it (it runs once the user answers).
-pub fn guard(app: &mut EffectcraftApp, id: &str, params: &Value) -> bool {
+pub fn guard(app: &mut AuroraApp, id: &str, params: &Value) -> bool {
     if !CLOSING.contains(&id) || std::mem::take(&mut app.dialog_state.unsaved.answered) {
         return false;
     }
     ask(app, id, params)
 }
 
-fn ask(app: &mut EffectcraftApp, id: &str, params: &Value) -> bool {
+fn ask(app: &mut AuroraApp, id: &str, params: &Value) -> bool {
     if !app.session.is_dirty() {
         return false;
     }
@@ -45,7 +45,7 @@ fn ask(app: &mut EffectcraftApp, id: &str, params: &Value) -> bool {
 }
 
 /// The window's close button (and Quit, which closes it): keep the window open and ask.
-pub fn on_close_requested(app: &mut EffectcraftApp, ctx: &egui::Context) {
+pub fn on_close_requested(app: &mut AuroraApp, ctx: &egui::Context) {
     if !ctx.input(|i| i.viewport().close_requested()) || app.dialog_state.unsaved.quitting {
         return;
     }
@@ -57,7 +57,7 @@ pub fn on_close_requested(app: &mut EffectcraftApp, ctx: &egui::Context) {
 }
 
 /// The project's display name: its file name, or `Untitled Project.ecproj`.
-pub fn project_name(app: &EffectcraftApp) -> String {
+pub fn project_name(app: &AuroraApp) -> String {
     app.session
         .path
         .as_deref()
@@ -67,9 +67,9 @@ pub fn project_name(app: &EffectcraftApp) -> String {
 }
 
 /// The window title: the project's path (or name) and `*` while it has unsaved changes.
-pub fn window_title(app: &EffectcraftApp) -> String {
+pub fn window_title(app: &AuroraApp) -> String {
     let doc = app.session.path.clone().unwrap_or_else(|| project_name(app));
-    format!("EffectCraft - {doc}{}", if app.session.is_dirty() { " *" } else { "" })
+    format!("Aurora - {doc}{}", if app.session.is_dirty() { " *" } else { "" })
 }
 
 enum Answer {
@@ -78,7 +78,7 @@ enum Answer {
     Cancel,
 }
 
-pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
+pub fn show(app: &mut AuroraApp, ctx: &egui::Context, t: &Tokens) {
     let Some((id, _)) = app.dialog_state.unsaved.command.clone() else {
         app.dialog = None;
         return;
@@ -130,7 +130,7 @@ pub fn show(app: &mut EffectcraftApp, ctx: &egui::Context, t: &Tokens) {
     }
 }
 
-fn answer_with(app: &mut EffectcraftApp, ctx: &egui::Context, a: Answer) {
+fn answer_with(app: &mut AuroraApp, ctx: &egui::Context, a: Answer) {
     app.dialog = None;
     let Some((id, params)) = app.dialog_state.unsaved.command.take() else { return };
     match a {
@@ -167,16 +167,16 @@ fn answer_with(app: &mut EffectcraftApp, ctx: &egui::Context, a: Answer) {
 mod tests {
     use super::*;
 
-    fn app() -> (EffectcraftApp, egui::Context) {
+    fn app() -> (AuroraApp, egui::Context) {
         let ctx = egui::Context::default();
-        let app = EffectcraftApp::new(effectcraft_engine::Session::default());
+        let app = AuroraApp::new(aurora_engine::Session::default());
         crate::theme::install(&ctx, &app.tokens);
         (app, ctx)
     }
 
     /// One frame of the dialogs, with `close` = the window's close button pressed; returns
     /// whether the frame asked the window to stay open.
-    fn frame(app: &mut EffectcraftApp, ctx: &egui::Context, close: bool) -> bool {
+    fn frame(app: &mut AuroraApp, ctx: &egui::Context, close: bool) -> bool {
         let mut raw = egui::RawInput::default();
         if close {
             raw.viewports.entry(egui::ViewportId::ROOT).or_default().events.push(egui::ViewportEvent::Close);
@@ -190,7 +190,7 @@ mod tests {
         out.viewport_output.get(&egui::ViewportId::ROOT).is_some_and(|v| v.commands.contains(&egui::ViewportCommand::CancelClose))
     }
 
-    fn modified(app: &mut EffectcraftApp) {
+    fn modified(app: &mut AuroraApp) {
         app.session.execute("comp.new", json!({"name": "Main", "width": 64, "height": 64})).unwrap();
         assert!(app.session.is_dirty());
     }

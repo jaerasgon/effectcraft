@@ -1,6 +1,6 @@
-# Where EffectCraft falls short
+# Where Aurora falls short
 
-An honest assessment of how far EffectCraft is from being a real replacement for After Effects,
+An honest assessment of how far Aurora is from being a real replacement for After Effects,
 and the work that closes the gap. This document is meant for contributors and agents choosing
 what to work on. The [ROADMAP](../ROADMAP.md) summarises it; [parity.md](parity.md) is the
 feature-by-feature checklist it builds on.
@@ -17,7 +17,7 @@ and the breadth is real: every one of After Effects' effects exists by name, alo
 menus, panels, 3D, tracking, expressions, scripting and export.
 
 It does not answer the question users care about: *can someone who uses After Effects for a living
-do real work in EffectCraft?* Nobody has measured that yet. Our best estimate is **≈ 30–50%**,
+do real work in Aurora?* Nobody has measured that yet. Our best estimate is **≈ 30–50%**,
 limited mainly by four things: projects we can't open, behaviour nobody has checked against After
 Effects, reliability on platforms other than macOS, and the third-party plug-ins professional
 projects depend on.
@@ -53,7 +53,7 @@ The most important missing piece: it turns every other estimate here into a meas
   blend modes, track mattes, each effect at default and at non-default settings, text animators,
   expressions, 3D, motion blur, time remapping.
 - Drive After Effects through ExtendScript (see CLAUDE.md) to record property values at sampled
-  times and render reference frames; render the same projects in EffectCraft headless.
+  times and render reference frames; render the same projects in Aurora headless.
 - Compare values exactly and frames with a perceptual metric; publish a per-feature fidelity
   score and a fidelity column in parity.md.
 - Clean room: After Effects output stays local in `plan/aftereffects/ref/` (gitignored). Commit
@@ -102,7 +102,7 @@ The most important missing piece: it turns every other estimate here into a meas
 - Regression evidence for the reports of 8 October, checked headlessly on Windows:
   `a_short_project_panel_draws` (#231), `viewer_press_prefers_a_selected_layer_under_the_pointer`
   (#230), `match_system_uses_the_system_language_where_there_is_a_catalog` (#229) and
-  `apps/effectcraft-web/tests/page.mjs` (#226, #225); the #225, #226 and #231 reproductions also
+  `apps/aurora-web/tests/page.mjs` (#226, #225); the #225, #226 and #231 reproductions also
   pass in the dev web build in headless Chrome 154 (device pixel ratio 2, a rejected file read,
   `GPUDevice.destroy()`).
 - Regression evidence for the Turbulent Displace, Wave Warp and Bulge pinning of #227:
@@ -170,7 +170,7 @@ The most important missing piece: it turns every other estimate here into a meas
 
 - Decided on 5 October 2026 for Roto Brush: licensed weights with pure-Rust inference, if the
   impact on the system is low, in a composable, swappable module. Done in M13.35: the
-  `effectcraft-segment` crate (a `MaskModel` interface, a registry that only accepts
+  `aurora-segment` crate (a `MaskModel` interface, a registry that only accepts
   open-source licences, MobileSAM under Apache-2.0), weights downloaded on demand and verified,
   Settings ▸ Roto Brush to choose. Next: measure it against After Effects (G1); faster encoders
   (GPU) for long shots.
@@ -182,7 +182,7 @@ The most important missing piece: it turns every other estimate here into a meas
 
 ### G8. Plug-in ecosystem
 
-- After Effects SDK plug-ins cannot run in EffectCraft. Our own WebAssembly plug-in API exists
+- After Effects SDK plug-ins cannot run in Aurora. Our own WebAssembly plug-in API exists
   ([plugins.md](plugins.md)). Grow it: documentation, examples, and original effects that cover
   what the most common third-party plug-ins are used for (particles, glows, 3D objects, sabers).
 

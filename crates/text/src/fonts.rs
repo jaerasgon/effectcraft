@@ -550,11 +550,11 @@ const CHINESE_FAMILIES: &[&str] = &[
 const KOREAN_FAMILIES: &[&str] = &["Malgun Gothic", "Gulim", "Apple SD Gothic Neo", "Noto Sans CJK KR", "Noto Sans KR", "Source Han Sans KR", "NanumGothic"];
 
 /// The CJK language to try first for Han ideographs, from the locale environment (`LANG`,
-/// `LC_ALL`, `LC_CTYPE`; `EFFECTCRAFT_CJK_LOCALE` overrides them). Japanese when nothing says
+/// `LC_ALL`, `LC_CTYPE`; `AURORA_CJK_LOCALE` overrides them). Japanese when nothing says
 /// otherwise: the ambiguity only matters for ideographs, and kana / hangul in the same text pick
 /// their language regardless.
 fn han_order() -> [FallbackScript; 3] {
-    let tag = ["EFFECTCRAFT_CJK_LOCALE", "LC_ALL", "LC_CTYPE", "LANG"]
+    let tag = ["AURORA_CJK_LOCALE", "LC_ALL", "LC_CTYPE", "LANG"]
         .iter()
         .filter_map(|k| std::env::var(k).ok())
         .map(|v| v.trim().to_ascii_lowercase())

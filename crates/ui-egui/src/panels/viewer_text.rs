@@ -14,18 +14,18 @@
 //! Every change runs an engine command (`text.*`, `layer.setText`, `edit.*`), so it's undoable and
 //! agents can do the same over the control channel.
 
-use effectcraft_engine::commands::text_edit::layer_doc;
-use effectcraft_engine::geom::{Mat3, vec2 as gv2};
-use effectcraft_engine::keyframe::{Kerning, TextDoc};
-use effectcraft_engine::project::{Layer, LayerId, LayerSource};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::text::kurbo::Point;
-use effectcraft_engine::text::{TextLayout, layout_doc};
+use aurora_engine::commands::text_edit::layer_doc;
+use aurora_engine::geom::{Mat3, vec2 as gv2};
+use aurora_engine::keyframe::{Kerning, TextDoc};
+use aurora_engine::project::{Layer, LayerId, LayerSource};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::text::kurbo::Point;
+use aurora_engine::text::{TextLayout, layout_doc};
 use egui::{Color32, Pos2, Rect, Stroke, StrokeKind, vec2};
 use serde_json::{Value, json};
 
 use super::viewer::ViewerMap;
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 use crate::state::Tool;
 
 /// Pointer interaction owned by text editing (kept across frames while the button is down).
@@ -104,7 +104,7 @@ impl Edited {
     }
 }
 
-fn edited(app: &EffectcraftApp, ectx: &EvalCtx, lid: LayerId) -> Option<Edited> {
+fn edited(app: &AuroraApp, ectx: &EvalCtx, lid: LayerId) -> Option<Edited> {
     let layer = ectx.comp.layer(lid)?.clone();
     if !matches!(layer.source, LayerSource::Text) {
         return None;
@@ -113,19 +113,19 @@ fn edited(app: &EffectcraftApp, ectx: &EvalCtx, lid: LayerId) -> Option<Edited> 
     let lay = layout_doc(&doc);
     let m = super::viewer::l2c(ectx, &layer).0;
     let inv = m.inverse()?;
-    let carets = effectcraft_engine::render::text::caret_maps(ectx, &layer, lay.chars);
+    let carets = aurora_engine::render::text::caret_maps(ectx, &layer, lay.chars);
     Some(Edited { layer, doc, lay, m, inv, carets })
 }
 
 /// The topmost text layer whose text is under screen point `s`.
-fn text_layer_at(app: &EffectcraftApp, ectx: &EvalCtx, map: &ViewerMap, s: Pos2) -> Option<Edited> {
+fn text_layer_at(app: &AuroraApp, ectx: &EvalCtx, map: &ViewerMap, s: Pos2) -> Option<Edited> {
     super::viewer::selectable_layers(ectx.comp, ectx.time)
         .filter(|l| matches!(l.source, LayerSource::Text))
         .filter_map(|l| edited(app, ectx, l.id))
         .find(|e| e.contains(map, s))
 }
 
-fn exec(app: &mut EffectcraftApp, id: &str, p: Value) -> Option<Value> {
+fn exec(app: &mut AuroraApp, id: &str, p: Value) -> Option<Value> {
     match app.session.execute(id, p) {
         Ok(v) => Some(v),
         Err(e) => {
@@ -148,15 +148,7 @@ fn typing_key(ui: &egui::Ui, bump: bool) -> String {
 
 /// Viewer hook: draws the edit overlay and handles text pointer and keyboard input. Returns
 /// true when it owns this frame's pointer interaction (the viewer then skips its own gestures).
-pub fn hook(
-    app: &mut EffectcraftApp,
-    ui: &mut egui::Ui,
-    painter: &egui::Painter,
-    map: &ViewerMap,
-    ectx: &EvalCtx,
-    resp: &egui::Response,
-    space_pan: bool,
-) -> bool {
+pub fn hook(app: &mut AuroraApp, ui: &mut egui::Ui, painter: &egui::Painter, map: &ViewerMap, ectx: &EvalCtx, resp: &egui::Response, space_pan: bool) -> bool {
     // The keyboard target: a focusable (non-clickable) widget, so egui and AccessKit know it.
     ui.interact(Rect::from_min_size(resp.rect.min, vec2(1.0, 1.0)), focus_id(), egui::Sense::focusable_noninteractive());
     let tool = app.ui.tool;
@@ -299,7 +291,7 @@ pub fn hook(
         let cur2 = app.session.state.text_edit.clone().and_then(|s| edited(app, ectx, s.layer));
         match cur2 {
             Some(e) if e.contains(map, p) => {
-                let r = effectcraft_engine::keyframe::text_doc::word_at(&e.doc.text, e.hit(map, p));
+                let r = aurora_engine::keyframe::text_doc::word_at(&e.doc.text, e.hit(map, p));
                 exec(app, "text.setSelection", json!({"anchor": r.start, "caret": r.end}));
                 owns = true;
             }
@@ -351,7 +343,7 @@ pub fn hook(
     owns
 }
 
-fn keyboard(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
+fn keyboard(app: &mut AuroraApp, ui: &mut egui::Ui) {
     let events = ui.input(|i| i.events.clone());
     let ctx = ui.ctx().clone();
     for ev in events {
@@ -391,7 +383,7 @@ fn keyboard(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
             egui::Event::Key { key, pressed: true, modifiers: m, .. } => {
                 use egui::Key;
                 let cmd = m.command;
-                let mv = |app: &mut EffectcraftApp, to: &str| {
+                let mv = |app: &mut AuroraApp, to: &str| {
                     exec(app, "text.moveCaret", json!({"to": to, "extend": m.shift}));
                 };
                 match key {
@@ -469,7 +461,7 @@ fn keyboard(app: &mut EffectcraftApp, ui: &mut egui::Ui) {
     }
 }
 
-fn draw(app: &mut EffectcraftApp, ui: &mut egui::Ui, painter: &egui::Painter, map: &ViewerMap, e: &Edited, sel: std::ops::Range<usize>, caret: usize) {
+fn draw(app: &mut AuroraApp, ui: &mut egui::Ui, painter: &egui::Painter, map: &ViewerMap, e: &Edited, sel: std::ops::Range<usize>, caret: usize) {
     let t = app.tokens;
     let to_s = |p: Point| e.to_screen(map, (p.x, p.y));
     // Paragraph box and its handles.

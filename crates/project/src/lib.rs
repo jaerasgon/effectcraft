@@ -1,4 +1,4 @@
-//! The EffectCraft document model.
+//! The Aurora document model.
 //!
 //! `Project` → items (folders, compositions, footage, solids) → `Comp` → `Layer` → property tree
 //! ([`props`]). Compositions sit behind `Arc` so undo snapshots share everything that did not
@@ -17,21 +17,21 @@ pub mod tracking;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-pub use effectcraft_color::ColorSpace;
-use effectcraft_color::{BlendMode, Label};
-use effectcraft_time::{FrameRate, Tick};
+pub use aurora_color::ColorSpace;
+use aurora_color::{BlendMode, Label};
+use aurora_time::{FrameRate, Tick};
 pub use props::{Expression, FeatherFalloff, GroupKind, MaskMode, MaskMotionBlur, Node, ParamUi, PropGroup, Property, Uid, parse_path};
 use serde::{Deserialize, Serialize};
 
-pub use effectcraft_keyframe as keyframe;
-pub use effectcraft_keyframe::{Keyframe, Value};
+pub use aurora_keyframe as keyframe;
+pub use aurora_keyframe::{Keyframe, Value};
 
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// The EffectCraft version, written into project files as `savedBy`.
+/// The Aurora version, written into project files as `savedBy`.
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// The EffectCraft version that wrote a project file (its `savedBy`), when it says.
+/// The Aurora version that wrote a project file (its `savedBy`), when it says.
 pub fn saved_by(text: &str) -> Option<String> {
     #[derive(Deserialize)]
     struct Meta {

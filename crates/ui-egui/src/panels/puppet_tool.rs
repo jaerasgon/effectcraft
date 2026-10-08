@@ -5,15 +5,15 @@
 
 use std::sync::Arc;
 
-use effectcraft_engine::effects::puppet::{self, Mesh, Pin, PinKind};
-use effectcraft_engine::geom::vec2 as gv2;
-use effectcraft_engine::project::{ItemId, Layer, LayerId};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::time::Tick;
+use aurora_engine::effects::puppet::{self, Mesh, Pin, PinKind};
+use aurora_engine::geom::vec2 as gv2;
+use aurora_engine::project::{ItemId, Layer, LayerId};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::time::Tick;
 use egui::{Color32, Pos2, Stroke};
 
 use super::viewer::{ViewerMap, l2c};
-use crate::EffectcraftApp;
+use crate::AuroraApp;
 
 /// Deformed meshes of a layer's Puppet effect: (mesh uid, mesh, deformed vertices, pins).
 pub type Overlay = Arc<Vec<(u64, Arc<Mesh>, Vec<[f64; 2]>, Vec<Pin>)>>;
@@ -67,7 +67,7 @@ struct Cached {
 }
 
 /// The deformed mesh of `layer`'s Puppet effect at comp time `t` (cached per project revision).
-pub fn overlay(app: &EffectcraftApp, ctx: &egui::Context, cid: ItemId, layer: &Layer, t: Tick) -> Option<Overlay> {
+pub fn overlay(app: &AuroraApp, ctx: &egui::Context, cid: ItemId, layer: &Layer, t: Tick) -> Option<Overlay> {
     let fx = layer.effects()?.groups().find(|g| puppet::is_puppet(g))?;
     let key = (app.session.revision, cid.0, layer.id.0, t.0);
     let id = egui::Id::new(("puppet-overlay", layer.id.0));
@@ -76,7 +76,7 @@ pub fn overlay(app: &EffectcraftApp, ctx: &egui::Context, cid: ItemId, layer: &L
     {
         return Some(c.overlay);
     }
-    let (buf, params) = effectcraft_engine::commands::puppet::puppet_eval(&app.session, cid, layer.id, fx.uid, t)?;
+    let (buf, params) = aurora_engine::commands::puppet::puppet_eval(&app.session, cid, layer.id, fx.uid, t)?;
     let overlay: Overlay = Arc::new(puppet::overlay(&buf, &params));
     ctx.data_mut(|d| d.insert_temp(id, Cached { key, overlay: overlay.clone() }));
     Some(overlay)

@@ -4,18 +4,18 @@
 //! 3D views (Active Camera / Front / … / Custom View 3), camera tools (orbit, pan, dolly) and
 //! camera/light wireframes.
 
-use effectcraft_engine::effects::puppet::PinKind;
-use effectcraft_engine::geom::{Mat3, vec2 as gv2};
-use effectcraft_engine::project::{Comp, Layer, LayerId};
-use effectcraft_engine::render::EvalCtx;
-use effectcraft_engine::render::three_d::{self, CameraState, View3D};
-use effectcraft_engine::time::Tick;
+use aurora_engine::effects::puppet::PinKind;
+use aurora_engine::geom::{Mat3, vec2 as gv2};
+use aurora_engine::project::{Comp, Layer, LayerId};
+use aurora_engine::render::EvalCtx;
+use aurora_engine::render::three_d::{self, CameraState, View3D};
+use aurora_engine::time::Tick;
 use egui::{Align2, Color32, Pos2, Rect, Sense, Stroke, StrokeKind, pos2, vec2};
 use serde_json::json;
 
 use crate::state::Tool;
 use crate::theme::Tokens;
-use crate::{EffectcraftApp, widgets};
+use crate::{AuroraApp, widgets};
 
 /// Viewer mapping published each frame (for the control channel and other panels).
 #[derive(Clone, Copy, Debug)]
@@ -94,7 +94,7 @@ enum Gesture {
         inv: Mat3,
         l2p: Mat3,
         /// The layer's own snap targets as the drag began (its box and path vertices).
-        own: Vec<effectcraft_engine::viewer::SnapTarget>,
+        own: Vec<aurora_engine::viewer::SnapTarget>,
         /// Alt held as the drag began: the anchor point moves alone, so the layer shifts.
         anchor_only: bool,
     },
@@ -210,7 +210,7 @@ fn roi_handles(r: Rect) -> [Pos2; 8] {
 
 /// A drag starting on a region of interest handle: the ROI redrawn from the opposite corner (or
 /// edge, with the other axis kept).
-fn roi_drag(app: &EffectcraftApp, map: &ViewerMap, comp_rect: Rect, zoom: f32, press: Pos2) -> Option<ov::Drag> {
+fn roi_drag(app: &AuroraApp, map: &ViewerMap, comp_rect: Rect, zoom: f32, press: Pos2) -> Option<ov::Drag> {
     let [rx, ry, rw, rh] = app.session.state.region_of_interest?;
     let r = Rect::from_min_size(comp_rect.min + vec2(rx as f32 * zoom, ry as f32 * zoom), vec2(rw as f32 * zoom, rh as f32 * zoom));
     let i = roi_handles(r).iter().position(|h| h.distance(press) < 6.0)?;
@@ -243,7 +243,7 @@ pub(crate) fn l2c(ctx: &EvalCtx, layer: &Layer) -> (Mat3, f64) {
 
 /// Layer → comp matrix and its bounds quad (in comp pixels).
 pub(crate) fn layer_quad(ctx: &EvalCtx, layer: &Layer) -> Option<(Mat3, [[f64; 2]; 4], [f64; 4])> {
-    let b = effectcraft_engine::render::content_bounds(ctx, layer)?;
+    let b = aurora_engine::render::content_bounds(ctx, layer)?;
     let (m, _) = l2c(ctx, layer);
     let pts = [[b[0], b[1]], [b[2], b[1]], [b[2], b[3]], [b[0], b[3]]].map(|p| {
         let q = m.apply(gv2(p[0], p[1]));
@@ -344,10 +344,10 @@ fn parent_inverse(ctx: &EvalCtx, layer: &Layer) -> Mat3 {
 
 /// Draw the extra views of a 2- or 4-view layout and return the main view's rectangle.
 fn aux_views(
-    app: &mut EffectcraftApp,
+    app: &mut AuroraApp,
     ui: &mut egui::Ui,
-    comp: &effectcraft_engine::project::Comp,
-    cid: effectcraft_engine::project::ItemId,
+    comp: &aurora_engine::project::Comp,
+    cid: aurora_engine::project::ItemId,
     full: Rect,
     bg: Color32,
 ) -> Rect {
@@ -395,7 +395,7 @@ fn aux_views(
         let tex = match cached {
             Some((k, tex)) if k == key => tex,
             _ => {
-                let opts = effectcraft_engine::render::RenderOpts { scale, view: comp.has_3d().then_some(cam), draft: true, ..Default::default() };
+                let opts = aurora_engine::render::RenderOpts { scale, view: comp.has_3d().then_some(cam), draft: true, ..Default::default() };
                 let img = app.session.render(cid, t, opts);
                 let tex = crate::frames::load_fitted(&ctx, format!("viewer-aux-{i}"), crate::frames::to_color_image(&img), egui::TextureOptions::LINEAR);
                 ctx.data_mut(|d| d.insert_temp(id, (key, tex.clone())));
@@ -420,7 +420,7 @@ fn aux_views(
 
 /// View ▸ Split with New Locked Viewer: the locked viewer on the left of the Composition panel
 /// (its comp and 3D view stay put whatever comp is active). Returns the main viewer's rectangle.
-fn locked_pane(app: &mut EffectcraftApp, ui: &mut egui::Ui, full: Rect, bg: Color32) -> Rect {
+fn locked_pane(app: &mut AuroraApp, ui: &mut egui::Ui, full: Rect, bg: Color32) -> Rect {
     let Some(lv) = app.session.state.locked_viewer else { return full };
     let Some(comp) = app.session.project.comp_arc(lv.comp) else { return full };
     let name = app.session.project.item(lv.comp).map(|i| i.name.clone()).unwrap_or_default();
@@ -439,7 +439,7 @@ fn locked_pane(app: &mut EffectcraftApp, ui: &mut egui::Ui, full: Rect, bg: Colo
     let t = app.session.time_of(lv.comp);
     let cam = (lv.view != View3D::ActiveCamera && comp.has_3d())
         .then(|| app.session.state.views3d.get(&lv.comp).cloned().unwrap_or_default().cam(lv.view, comp.width as f64, comp.height as f64).state());
-    let dc = effectcraft_engine::viewer::DisplayColor::of(&app.session);
+    let dc = aurora_engine::viewer::DisplayColor::of(&app.session);
     let key = {
         use std::hash::{Hash, Hasher};
         let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -451,7 +451,7 @@ fn locked_pane(app: &mut EffectcraftApp, ui: &mut egui::Ui, full: Rect, bg: Colo
     let tex = match cached {
         Some((k, tex)) if k == key => tex,
         _ => {
-            let opts = effectcraft_engine::render::RenderOpts { scale, view: cam, ..Default::default() };
+            let opts = aurora_engine::render::RenderOpts { scale, view: cam, ..Default::default() };
             let img = app.session.render(lv.comp, t, opts);
             let mut ci = crate::frames::to_color_image(&img);
             if let Some(dc) = dc {
@@ -498,14 +498,14 @@ pub(crate) fn checker(p: &egui::Painter, r: Rect) {
     }
 }
 
-pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+pub fn show(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let ctx = ui.ctx().clone();
     let Some(cid) = app.session.active_comp_id() else {
         empty_state(app, ui, rect);
         return;
     };
-    let comp = app.session.project.comp_arc(cid).unwrap_or_else(|| effectcraft_engine::project::Comp::new(1920, 1080, Default::default(), Tick::ZERO).into());
+    let comp = app.session.project.comp_arc(cid).unwrap_or_else(|| aurora_engine::project::Comp::new(1920, 1080, Default::default(), Tick::ZERO).into());
     let comp_name = app.session.project.item(cid).map(|i| i.name.clone()).unwrap_or_default();
     let p = ui.painter().clone();
     VIEW_CAM.with(|c| c.set(app.session.view_camera(cid)));
@@ -726,7 +726,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
             // selected collapsed precomp.
             if app.session.prefs.previews.show_internal_wireframes
                 && l.switches.collapse
-                && let effectcraft_engine::project::LayerSource::Comp { item } = &l.source
+                && let aurora_engine::project::LayerSource::Comp { item } = &l.source
                 && let Some(nc) = app.session.project.comp(*item)
             {
                 let (outer, _) = l2c(&ectx, l);
@@ -776,13 +776,13 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                 if l.is_3d() {
                     let w = ectx.world_matrix(l);
                     let pc = cam_state(&ectx).projection(cw as f64, ch as f64) * w;
-                    let a3 = effectcraft_engine::geom::vec3(a[0], a[1], a[2]);
+                    let a3 = aurora_engine::geom::vec3(a[0], a[1], a[2]);
                     let o = pc.apply(a3);
                     let len = 60.0 / zoom as f64;
                     for (axis, col) in [
-                        (effectcraft_engine::geom::vec3(len, 0.0, 0.0), Color32::from_rgb(0xe0, 0x50, 0x50)),
-                        (effectcraft_engine::geom::vec3(0.0, len, 0.0), Color32::from_rgb(0x60, 0xd0, 0x60)),
-                        (effectcraft_engine::geom::vec3(0.0, 0.0, len), Color32::from_rgb(0x50, 0x8c, 0xf0)),
+                        (aurora_engine::geom::vec3(len, 0.0, 0.0), Color32::from_rgb(0xe0, 0x50, 0x50)),
+                        (aurora_engine::geom::vec3(0.0, len, 0.0), Color32::from_rgb(0x60, 0xd0, 0x60)),
+                        (aurora_engine::geom::vec3(0.0, 0.0, len), Color32::from_rgb(0x50, 0x8c, 0xf0)),
                     ] {
                         let e = pc.apply(a3 + axis);
                         painter.arrow(map.to_screen([o.x, o.y]), map.to_screen([e.x, e.y]) - map.to_screen([o.x, o.y]), Stroke::new(2.0, col));
@@ -808,13 +808,13 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     }
     if has_3d && app.session.prefs.three_d.show_reference_axes {
         let pc = cam_state(&ectx).projection(cw as f64, ch as f64);
-        let o3 = effectcraft_engine::geom::vec3(cw as f64 / 2.0, ch as f64 / 2.0, 0.0);
+        let o3 = aurora_engine::geom::vec3(cw as f64 / 2.0, ch as f64 / 2.0, 0.0);
         let o = pc.apply(o3);
         let corner = pos2(area.min.x + 34.0, area.max.y - 34.0);
         for (axis, col, name) in [
-            (effectcraft_engine::geom::vec3(1.0, 0.0, 0.0), Color32::from_rgb(0xe0, 0x50, 0x50), "X"),
-            (effectcraft_engine::geom::vec3(0.0, 1.0, 0.0), Color32::from_rgb(0x60, 0xd0, 0x60), "Y"),
-            (effectcraft_engine::geom::vec3(0.0, 0.0, 1.0), Color32::from_rgb(0x50, 0x8c, 0xf0), "Z"),
+            (aurora_engine::geom::vec3(1.0, 0.0, 0.0), Color32::from_rgb(0xe0, 0x50, 0x50), "X"),
+            (aurora_engine::geom::vec3(0.0, 1.0, 0.0), Color32::from_rgb(0x60, 0xd0, 0x60), "Y"),
+            (aurora_engine::geom::vec3(0.0, 0.0, 1.0), Color32::from_rgb(0x50, 0x8c, 0xf0), "Z"),
         ] {
             let e = pc.apply(o3 + axis * 10.0);
             let d = vec2((e.x - o.x) as f32, (e.y - o.y) as f32);
@@ -849,8 +849,8 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
         && layer.is_active_at(time)
     {
         let (m, _) = l2c(&ectx, layer);
-        let (w, h) = effectcraft_engine::render::source_size(&app.session.project, layer);
-        let c = m.apply(effectcraft_engine::geom::vec2(w as f64 / 2.0, h as f64 / 2.0));
+        let (w, h) = aurora_engine::render::source_size(&app.session.project, layer);
+        let c = m.apply(aurora_engine::geom::vec2(w as f64 / 2.0, h as f64 / 2.0));
         let at = map.to_screen([c.x, c.y]);
         let text = pr.banner();
         let galley = painter.layout_no_wrap(text.clone(), Tokens::medium(13.0), Color32::WHITE);
@@ -1069,7 +1069,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                     start: map.to_comp(press),
                     inv: l2c.inverse().unwrap_or(Mat3::IDENTITY),
                     l2p,
-                    own: effectcraft_engine::viewer::layer_targets(&ectx, layer, false),
+                    own: aurora_engine::viewer::layer_targets(&ectx, layer, false),
                     anchor_only: mods.alt,
                 })
             }),
@@ -1175,7 +1175,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                         })
                         .collect();
                     // Snap the grabbed layer's feature nearest the pointer (AE's snap handle).
-                    let snap_src = comp.layer(l).map(|layer| effectcraft_engine::viewer::layer_features(&ectx, layer)).and_then(|f| {
+                    let snap_src = comp.layer(l).map(|layer| aurora_engine::viewer::layer_features(&ectx, layer)).and_then(|f| {
                         let c = map.to_comp(press);
                         f.into_iter().min_by(|a, b| {
                             let da = (a[0] - c[0]).powi(2) + (a[1] - c[1]).powi(2);
@@ -1296,7 +1296,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
                     painter.rect_stroke(r, 0.0, Stroke::new(1.0, Color32::WHITE), StrokeKind::Middle);
                 }
                 d => {
-                    let mut snapper = |a: &EffectcraftApp, p: [f64; 2], l: LayerId| vt::snap(a, &ctx, &ectx, &map, &[l], &[p], mods);
+                    let mut snapper = |a: &AuroraApp, p: [f64; 2], l: LayerId| vt::snap(a, &ctx, &ectx, &map, &[l], &[p], mods);
                     if let Some(nd) = ov::update(app, &d, cpt, pos, mods, &merge, zoom, &mut snapper) {
                         ui.data_mut(|dd| dd.insert_temp(gid, Gesture::Overlay(nd)));
                     }
@@ -1533,7 +1533,7 @@ pub fn show(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
     {
         let cpt = map.to_comp(pos);
         if let Some(l) = pick(app, &ectx, cpt, false).and_then(|l| comp.layer(l))
-            && let effectcraft_engine::project::LayerSource::Comp { item } = &l.source
+            && let aurora_engine::project::LayerSource::Comp { item } = &l.source
         {
             app.session.open_comp(*item);
         }
@@ -1574,7 +1574,7 @@ fn drag_axes(ctx: &EvalCtx, l: &Layer) -> ([f64; 3], [f64; 3]) {
     let k = if cam.ortho { 1.0 / cam.zoom.max(1e-9) } else { cam.depth(wp).max(1.0) / cam.zoom.max(1e-9) };
     let pinv = match l.parent.and_then(|p| ctx.comp.layer(p)) {
         Some(p) => ctx.world_matrix(p).inverse().unwrap_or_default(),
-        None => effectcraft_engine::geom::Mat4::IDENTITY,
+        None => aurora_engine::geom::Mat4::IDENTITY,
     };
     let a = pinv.apply_vec(cam.right() * k);
     let b = pinv.apply_vec(cam.down() * k);
@@ -1583,9 +1583,9 @@ fn drag_axes(ctx: &EvalCtx, l: &Layer) -> ([f64; 3], [f64; 3]) {
 
 /// Wireframes of cameras (frustum, point of interest) and lights (position, direction) as seen
 /// through the current 3D view.
-fn draw_rigs(app: &mut EffectcraftApp, painter: &egui::Painter, map: &ViewerMap, ectx: &EvalCtx, selected: &[LayerId]) {
-    use effectcraft_engine::geom::Vec3;
-    use effectcraft_engine::project::{LayerSource, LightKind};
+fn draw_rigs(app: &mut AuroraApp, painter: &egui::Painter, map: &ViewerMap, ectx: &EvalCtx, selected: &[LayerId]) {
+    use aurora_engine::geom::Vec3;
+    use aurora_engine::project::{LayerSource, LightKind};
     let cam = cam_state(ectx);
     let (w, h) = (ectx.comp.width as f64, ectx.comp.height as f64);
     let active = ectx.comp.active_camera(ectx.time).map(|c| c.id);
@@ -1657,8 +1657,8 @@ fn draw_rigs(app: &mut EffectcraftApp, painter: &egui::Painter, map: &ViewerMap,
 /// footage/solid layer (or shape layer, with Tool Creates Mask), a shape path (Shape n group with
 /// the Tools bar's Fill and Stroke) on the selected shape layer, or a new shape layer when
 /// nothing is selected. The placed point snaps.
-fn pen_press(app: &mut EffectcraftApp, ui: &mut egui::Ui, ectx: &EvalCtx, map: &ViewerMap, paths: &[ov::PathInfo], pos: Pos2, mods: egui::Modifiers) {
-    use effectcraft_engine::project::LayerSource;
+fn pen_press(app: &mut AuroraApp, ui: &mut egui::Ui, ectx: &EvalCtx, map: &ViewerMap, paths: &[ov::PathInfo], pos: Pos2, mods: egui::Modifiers) {
+    use aurora_engine::project::LayerSource;
     let gid = egui::Id::new("viewer-gesture");
     let current: Option<(LayerId, u64)> = ui.data(|d| d.get_temp(pen_id()));
     let c0 = map.to_comp(pos);
@@ -1755,7 +1755,7 @@ pub(crate) fn layer_at<'a>(ectx: &EvalCtx<'a>, cpt: [f64; 2]) -> Option<&'a Laye
 /// The layer a press at a comp point acts on, selected (Shift toggles the topmost layer). As in
 /// After Effects, a selected layer under the point comes before the layers in front of it, so it
 /// can be dragged where they cover it; otherwise the topmost layer (#230).
-pub(crate) fn pick(app: &mut EffectcraftApp, ectx: &EvalCtx, cpt: [f64; 2], toggle: bool) -> Option<LayerId> {
+pub(crate) fn pick(app: &mut AuroraApp, ectx: &EvalCtx, cpt: [f64; 2], toggle: bool) -> Option<LayerId> {
     if toggle {
         let hit = layer_at(ectx, cpt)?.id;
         let _ = app.session.execute("layer.select", json!({"layers": [hit.0], "toggle": true}));
@@ -1770,7 +1770,7 @@ pub(crate) fn pick(app: &mut EffectcraftApp, ectx: &EvalCtx, cpt: [f64; 2], togg
     Some(hit)
 }
 
-fn create_shape(app: &mut EffectcraftApp, tool: Tool, a: [f64; 2], b: [f64; 2], square: bool) {
+fn create_shape(app: &mut AuroraApp, tool: Tool, a: [f64; 2], b: [f64; 2], square: bool) {
     let mut w = (b[0] - a[0]).abs();
     let mut h = (b[1] - a[1]).abs();
     if w < 2.0 && h < 2.0 {
@@ -1797,7 +1797,7 @@ fn create_shape(app: &mut EffectcraftApp, tool: Tool, a: [f64; 2], b: [f64; 2], 
     let sel_layer = sel.and_then(|id| app.session.active_comp().and_then(|c| c.layer(id)).cloned());
     if let Some(l) = sel_layer
         && l.source.is_av()
-        && (creates_mask || !matches!(l.source, effectcraft_engine::project::LayerSource::Shape))
+        && (creates_mask || !matches!(l.source, aurora_engine::project::LayerSource::Shape))
     {
         // Mask in layer space: invert the layer transform.
         let comp = app.session.active_comp_arc();
@@ -1827,7 +1827,7 @@ fn create_shape(app: &mut EffectcraftApp, tool: Tool, a: [f64; 2], b: [f64; 2], 
     }
 }
 
-fn empty_state(app: &mut EffectcraftApp, ui: &mut egui::Ui, rect: Rect) {
+fn empty_state(app: &mut AuroraApp, ui: &mut egui::Ui, rect: Rect) {
     let t = app.tokens;
     let p = ui.painter();
     p.rect_filled(rect, 0.0, t.pasteboard);
@@ -1880,12 +1880,7 @@ pub(crate) fn hex_rgb(s: &str) -> Option<[u8; 3]> {
 /// (or Draft 3D is on), and part of the visible viewer lies outside the comp frame.
 ///
 /// [`ViewerState::extended`]: crate::state::ViewerState::extended
-pub(crate) fn extended_region(
-    app: &EffectcraftApp,
-    comp: &effectcraft_engine::project::Comp,
-    cid: effectcraft_engine::project::ItemId,
-    map: ViewerMap,
-) -> Option<[f64; 4]> {
+pub(crate) fn extended_region(app: &AuroraApp, comp: &aurora_engine::project::Comp, cid: aurora_engine::project::ItemId, map: ViewerMap) -> Option<[f64; 4]> {
     if !app.session.prefs.three_d.extended_viewer || !comp.has_3d() || app.session.state.region_of_interest.is_some() {
         return None;
     }
@@ -1895,7 +1890,7 @@ pub(crate) fn extended_region(
     }
     let a = map.to_comp(map.area.min);
     let b = map.to_comp(map.area.max);
-    effectcraft_engine::render::extended_region(comp.width, comp.height, [a[0], a[1], b[0], b[1]], 1.0)
+    aurora_engine::render::extended_region(comp.width, comp.height, [a[0], a[1], b[0], b[1]], 1.0)
 }
 
 fn rect_of(map: &ViewerMap, r: Option<[f64; 4]>) -> Rect {
@@ -1905,7 +1900,7 @@ fn rect_of(map: &ViewerMap, r: Option<[f64; 4]>) -> Rect {
 
 /// Put a rendered frame on screen: CPU pixels go into an egui texture; GPU frames are drawn
 /// straight from their wgpu texture (registered with egui-wgpu, no readback).
-fn show_frame(app: &mut EffectcraftApp, ctx: &egui::Context, key: crate::frames::FrameKey, img: crate::frames::FrameImage) {
+fn show_frame(app: &mut AuroraApp, ctx: &egui::Context, key: crate::frames::FrameKey, img: crate::frames::FrameImage) {
     use crate::frames::FrameImage;
     // Settings ▸ Previews ▸ Viewer Zoom Quality.
     let smooth = app.session.prefs.viewer_zoom_smooth();

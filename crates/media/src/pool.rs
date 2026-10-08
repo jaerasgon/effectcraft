@@ -4,10 +4,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 
-use effectcraft_project::{AlphaMode, Footage, FootageKind, ItemId};
-use effectcraft_raster::{Image, Px};
-use effectcraft_render::FootageSource;
-use effectcraft_time::{FrameRate, TICKS_PER_SECOND, Tick};
+use aurora_project::{AlphaMode, Footage, FootageKind, ItemId};
+use aurora_raster::{Image, Px};
+use aurora_render::FootageSource;
+use aurora_time::{FrameRate, TICKS_PER_SECOND, Tick};
 use filmcraft_media::{FrameRequest, SharedSource};
 
 use crate::convert::{AlphaOp, dynamic_to_image, frame_to_image_in};
@@ -133,7 +133,7 @@ struct Inner {
     /// In-memory files registered with `add_bytes` (web builds, tests).
     files: Mutex<HashMap<String, Arc<[u8]>>>,
     /// Parsed 3D models by path (`None`: failed to load; not retried until `forget`).
-    models: Mutex<HashMap<String, Option<Arc<effectcraft_model::Model>>>>,
+    models: Mutex<HashMap<String, Option<Arc<aurora_model::Model>>>>,
     cache: Mutex<CacheState>,
     done: Condvar,
     budget: AtomicU64,
@@ -416,7 +416,7 @@ impl MediaPool {
             return Ok((*img).clone());
         }
         let (tw, th) = (((w as f64 * s).round() as u32).max(1), ((h as f64 * s).round() as u32).max(1));
-        Ok(effectcraft_raster::resample(&img, tw, th))
+        Ok(aurora_raster::resample(&img, tw, th))
     }
 }
 
@@ -426,7 +426,7 @@ impl Inner {
     }
 
     /// A 3D model file and its sibling resources (buffers, textures, MTL files), parsed once.
-    fn model(&self, path: &str) -> Option<Arc<effectcraft_model::Model>> {
+    fn model(&self, path: &str) -> Option<Arc<aurora_model::Model>> {
         if let Some(m) = lock(&self.models).get(path) {
             return m.clone();
         }
@@ -436,7 +436,7 @@ impl Inner {
                 let p = dir.join(uri);
                 self.read(&p.to_string_lossy()).ok().map(|b| b.to_vec())
             };
-            effectcraft_model::load(path, &bytes, &resolve).map_err(|e| e.to_string())
+            aurora_model::load(path, &bytes, &resolve).map_err(|e| e.to_string())
         });
         let m = match loaded {
             Ok(m) => Some(Arc::new(m)),
@@ -607,7 +607,7 @@ impl FootageSource for MediaPool {
     fn set_conform_folder(&self, folder: Option<std::path::PathBuf>) {
         MediaPool::set_conform_folder(self, folder);
     }
-    fn model(&self, _item: ItemId, footage: &Footage) -> Option<Arc<effectcraft_model::Model>> {
+    fn model(&self, _item: ItemId, footage: &Footage) -> Option<Arc<aurora_model::Model>> {
         if footage.missing || footage.kind != FootageKind::Model {
             return None;
         }
@@ -636,14 +636,14 @@ impl FootageSource for MediaPool {
     }
 
     fn vector_frame(&self, _item: ItemId, footage: &Footage, scale: f64) -> Option<Arc<Image>> {
-        if footage.missing || !effectcraft_render::is_vector_footage(footage) {
+        if footage.missing || !aurora_render::is_vector_footage(footage) {
             return None;
         }
         let bytes = self.inner.read(&footage.path).ok()?;
         crate::layered::rasterize_vector(&footage.path, &bytes, footage.layer.as_ref(), footage.page, scale).map(Arc::new)
     }
 
-    fn aux(&self, _item: ItemId, footage: &Footage, t: Tick) -> Option<Arc<effectcraft_raster::AuxChannels>> {
+    fn aux(&self, _item: ItemId, footage: &Footage, t: Tick) -> Option<Arc<aurora_raster::AuxChannels>> {
         if footage.missing || !footage.has_video {
             return None;
         }

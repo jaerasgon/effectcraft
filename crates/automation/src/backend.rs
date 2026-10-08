@@ -1,7 +1,7 @@
 //! Where tools run: an in-process session, or the desktop app over its control channel.
 
-use effectcraft_engine::Session;
-use effectcraft_engine::time::Tick;
+use aurora_engine::Session;
+use aurora_engine::time::Tick;
 use serde_json::{Value, json};
 
 use crate::{BridgeClient, Error, Result, base64, encode_png, recompress_png};
@@ -109,5 +109,4 @@ fn no_comp(comp: Option<&Value>) -> Error {
     }
 }
 
-pub const NEED_BRIDGE: &str =
-    "this tool drives the live app: start it with `effectcraft --control 9877` and run the MCP server as `effectcraft-cli mcp --bridge 9877`";
+pub const NEED_BRIDGE: &str = "this tool drives the live app: start it with `aurora --control 9877` and run the MCP server as `aurora-cli mcp --bridge 9877`";

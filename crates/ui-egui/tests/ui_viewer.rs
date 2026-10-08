@@ -2,37 +2,37 @@
 //! interest drawing, rulers and guides, snapping, the shape Pen and motion-path key drags
 //! (egui_kittest, UI logic only).
 
-use effectcraft_engine::Session;
-use effectcraft_engine::commands::shape_tool::PaintKind;
-use effectcraft_engine::project::LayerId;
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::state::Tool;
+use aurora_engine::Session;
+use aurora_engine::commands::shape_tool::PaintKind;
+use aurora_engine::project::LayerId;
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::state::Tool;
 use egui::{Event, Pos2, Rect, pos2, vec2};
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use serde_json::json;
 
-fn app() -> EffectcraftApp {
+fn app() -> AuroraApp {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "View", "width": 640, "height": 360, "duration": 4})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Plate", "color": "#406080", "width": 640, "height": 360})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Box", "color": "#e04020", "width": 80, "height": 80})).unwrap();
     s.execute("edit.deselectAll", json!({})).unwrap();
-    EffectcraftApp::new(s)
+    AuroraApp::new(s)
 }
 
-fn harness() -> Harness<'static, EffectcraftApp> {
+fn harness() -> Harness<'static, AuroraApp> {
     let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| app());
     h.run_steps(3);
     h
 }
 
-fn rect(h: &Harness<'_, EffectcraftApp>, id: &str) -> Rect {
+fn rect(h: &Harness<'_, AuroraApp>, id: &str) -> Rect {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}"));
     Rect::from_min_size(pos2(e.rect[0], e.rect[1]), vec2(e.rect[2], e.rect[3]))
 }
 
-fn click(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
+fn click(h: &mut Harness<'_, AuroraApp>, p: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(p));
     h.step();
     h.input_mut().events.push(Event::PointerButton { pos: p, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() });
@@ -41,7 +41,7 @@ fn click(h: &mut Harness<'_, EffectcraftApp>, p: Pos2) {
     h.run_steps(2);
 }
 
-fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2) {
+fn drag(h: &mut Harness<'_, AuroraApp>, from: Pos2, to: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(from));
     h.input_mut().events.push(Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() });
     h.step();
@@ -54,20 +54,20 @@ fn drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2) {
 }
 
 /// Comp pixel → screen point.
-fn screen(h: &Harness<'_, EffectcraftApp>, p: [f32; 2]) -> Pos2 {
+fn screen(h: &Harness<'_, AuroraApp>, p: [f32; 2]) -> Pos2 {
     let c = rect(h, "viewer.comp");
     let z = c.width() / 640.0;
     c.min + vec2(p[0] * z, p[1] * z)
 }
 
-fn selection_harness() -> Harness<'static, EffectcraftApp> {
+fn selection_harness() -> Harness<'static, AuroraApp> {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Selection", "width": 640, "height": 360, "duration": 4})).unwrap();
     for name in ["Back", "Front"] {
         s.execute("layer.newSolid", json!({"name": name, "color": "#406080", "width": 80, "height": 80})).unwrap();
     }
     s.execute("edit.deselectAll", json!({})).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(move |_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(move |_| AuroraApp::new(s));
     h.run_steps(3);
     h
 }
@@ -129,7 +129,7 @@ fn viewer_click_ignores_inactive_solo_layers() {
     let s = &mut h.state_mut().session;
     s.execute("layer.setSwitch", json!({"layers": [front.0], "switch": "solo", "value": true})).unwrap();
     let cid = s.active_comp_id().unwrap();
-    std::sync::Arc::make_mut(&mut s.project).comp_mut(cid).unwrap().layer_mut(front).unwrap().in_point = effectcraft_engine::time::Tick::from_seconds_f64(1.0);
+    std::sync::Arc::make_mut(&mut s.project).comp_mut(cid).unwrap().layer_mut(front).unwrap().in_point = aurora_engine::time::Tick::from_seconds_f64(1.0);
     h.run_steps(3);
     let at = screen(&h, [320.0, 180.0]);
     click(&mut h, at);
@@ -234,7 +234,7 @@ fn layer_drag_snaps_to_comp_centre_and_ctrl_disables() {
     let from = screen(&h, [100.0, 100.0]);
     let to = screen(&h, [323.0, 182.0]);
     drag(&mut h, from, to);
-    let pos = |h: &Harness<'_, EffectcraftApp>| {
+    let pos = |h: &Harness<'_, AuroraApp>| {
         let l = h.state().session.active_comp().unwrap().layer(box_id).unwrap().clone();
         l.props.prop("transform/position").unwrap().value.as_vec3()
     };
@@ -278,7 +278,7 @@ fn shape_tool_draws_into_the_selected_shape_layer() {
     drag(&mut h, a, b);
     let comp = h.state().session.active_comp().unwrap();
     assert_eq!(comp.layers.len(), n0 + 1);
-    assert!(matches!(comp.layers[0].source, effectcraft_engine::project::LayerSource::Shape));
+    assert!(matches!(comp.layers[0].source, aurora_engine::project::LayerSource::Shape));
     assert_ne!(comp.layers[0].id, LayerId(l));
 }
 
@@ -332,7 +332,7 @@ fn fill_options_paint_the_next_shape() {
     h.input_mut().events.push(Event::Key { key: egui::Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() });
     h.run_steps(2);
     let fill = h.state().session.state.shape_tool.fill.clone();
-    assert_eq!((fill.kind, fill.blend, fill.opacity), (PaintKind::Radial, effectcraft_engine::color::BlendMode::Multiply, 40.0));
+    assert_eq!((fill.kind, fill.blend, fill.opacity), (PaintKind::Radial, aurora_engine::color::BlendMode::Multiply, 40.0));
     h.input_mut().events.push(Event::Key { key: egui::Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() });
     h.run_steps(3);
     assert!(h.state().auto.find("header.fillOptions.radial").is_none(), "closed");
@@ -342,9 +342,9 @@ fn fill_options_paint_the_next_shape() {
     let g = layer.props.sub("contents").unwrap().groups().next().unwrap().sub("contents").unwrap().clone();
     assert_eq!(g.groups().map(|x| x.match_id.as_str()).collect::<Vec<_>>(), ["ellipse", "gfill"]);
     let gfill = g.groups().find(|x| x.match_id == "gfill").unwrap();
-    let multiply = effectcraft_engine::color::BlendMode::ALL.iter().position(|m| *m == effectcraft_engine::color::BlendMode::Multiply).unwrap() as u32;
-    assert_eq!(gfill.get("type").unwrap().value, effectcraft_keyframe::Value::Enum(1));
-    assert_eq!(gfill.get("blend").unwrap().value, effectcraft_keyframe::Value::Enum(multiply));
+    let multiply = aurora_engine::color::BlendMode::ALL.iter().position(|m| *m == aurora_engine::color::BlendMode::Multiply).unwrap() as u32;
+    assert_eq!(gfill.get("type").unwrap().value, aurora_keyframe::Value::Enum(1));
+    assert_eq!(gfill.get("blend").unwrap().value, aurora_keyframe::Value::Enum(multiply));
     assert_eq!(gfill.get("opacity").unwrap().value.as_f64(), 40.0);
 }
 
@@ -361,7 +361,7 @@ fn shape_pen_draws_a_closed_shape_layer() {
     let comp = h.state().session.active_comp().unwrap().clone();
     assert_eq!(comp.layers.len(), n0 + 1);
     let l = &comp.layers[0];
-    assert!(matches!(l.source, effectcraft_engine::project::LayerSource::Shape));
+    assert!(matches!(l.source, aurora_engine::project::LayerSource::Shape));
     let g = l.props.sub("contents").unwrap().groups().next().unwrap();
     assert_eq!(g.name, "Shape 1");
     let path = g.sub("contents").unwrap().groups().next().unwrap();
@@ -373,7 +373,7 @@ fn shape_pen_draws_a_closed_shape_layer() {
     let ctx = h.ctx.clone();
     let mut seen = vec![];
     for _ in 0..5 {
-        effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "tool.pen", json!({})).unwrap();
+        aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "tool.pen", json!({})).unwrap();
         seen.push(h.state().ui.tool);
     }
     assert_eq!(seen, vec![Tool::PenAdd, Tool::PenDelete, Tool::PenConvert, Tool::MaskFeather, Tool::Pen]);
@@ -413,7 +413,7 @@ fn motion_path_key_drag_edits_that_key() {
     s.execute("prop.addKey", json!({"layer": box_id.0, "path": "transform/position", "time": 0.0, "value": [100, 100, 0]})).unwrap();
     s.execute("prop.addKey", json!({"layer": box_id.0, "path": "transform/position", "time": 2.0, "value": [500, 100, 0]})).unwrap();
     s.execute("view.snapping", json!({"value": false})).unwrap();
-    s.set_time(effectcraft_engine::time::Tick::from_seconds_f64(1.0));
+    s.set_time(aurora_engine::time::Tick::from_seconds_f64(1.0));
     h.run_steps(3);
     assert!(h.state().auto.find(&format!("viewer.motionPath.{}.1", box_id.0)).is_some());
     let from = screen(&h, [500.0, 100.0]);
@@ -471,7 +471,7 @@ fn timeline_alt_drag_scales_a_key_group_in_time() {
     let uid = s.active_comp().unwrap().layer(box_id).unwrap().props.prop("transform/opacity").unwrap().uid;
     s.execute("keys.selectAll", json!({"layers": [box_id.0]})).unwrap();
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.opacity", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.opacity", json!({})).unwrap();
     h.run_steps(4);
     let mut ks: Vec<Pos2> =
         h.state().auto.query(&format!("timeline.key.{uid}.")).iter().map(|e| pos2(e.rect[0] + e.rect[2] / 2.0, e.rect[1] + e.rect[3] / 2.0)).collect();
@@ -643,7 +643,7 @@ fn pan_behind_alt_moves_the_anchor_alone_shift_constrains_and_the_tool_button_ce
 
 /// Drag from `from` to `to` with `modifiers` held, holding the end point a frame (the viewer's
 /// gestures apply the pointer of the previous frame).
-fn hold_drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, modifiers: egui::Modifiers) {
+fn hold_drag(h: &mut Harness<'_, AuroraApp>, from: Pos2, to: Pos2, modifiers: egui::Modifiers) {
     h.input_mut().events.push(Event::ModifiersChanged(modifiers));
     h.input_mut().events.push(Event::PointerMoved(from));
     h.input_mut().events.push(Event::PointerButton { pos: from, button: egui::PointerButton::Primary, pressed: true, modifiers });
@@ -659,7 +659,7 @@ fn hold_drag(h: &mut Harness<'_, EffectcraftApp>, from: Pos2, to: Pos2, modifier
 }
 
 /// A layer's Position and Anchor Point.
-fn position_and_anchor(h: &Harness<'_, EffectcraftApp>, layer: LayerId) -> ([f64; 3], [f64; 3]) {
+fn position_and_anchor(h: &Harness<'_, AuroraApp>, layer: LayerId) -> ([f64; 3], [f64; 3]) {
     let l = h.state().session.active_comp().unwrap().layer(layer).unwrap().clone();
     (l.props.prop("transform/position").unwrap().value.as_vec3(), l.props.prop("transform/anchor").unwrap().value.as_vec3())
 }
@@ -685,7 +685,7 @@ fn reference_axes_toggle_from_the_grid_menu() {
 }
 
 /// A Box layer pinned with two Position pins and a Bend pin in the middle (Bend tool active).
-fn puppet_harness() -> (Harness<'static, EffectcraftApp>, u64, u64) {
+fn puppet_harness() -> (Harness<'static, AuroraApp>, u64, u64) {
     let mut h = harness();
     let s = &mut h.state_mut().session;
     // No full-frame Plate behind the Box: the comp around the Box is empty, like the canvas
@@ -701,7 +701,7 @@ fn puppet_harness() -> (Harness<'static, EffectcraftApp>, u64, u64) {
     (h, id, bend)
 }
 
-fn pin_value(h: &Harness<'_, EffectcraftApp>, layer: u64, pin: u64, prop: &str) -> f64 {
+fn pin_value(h: &Harness<'_, AuroraApp>, layer: u64, pin: u64, prop: &str) -> f64 {
     let l = h.state().session.active_comp().unwrap().layer(LayerId(layer)).unwrap().clone();
     l.props.find_group(pin).unwrap().get(prop).unwrap().value.as_f64()
 }
@@ -733,7 +733,7 @@ fn puppet_bend_pin_rotates_by_its_ring_and_scales_by_its_square() {
 #[test]
 fn puppet_pin_click_selects_and_delete_removes_only_the_pins() {
     let (mut h, id, bend) = puppet_harness();
-    let pin = |h: &Harness<'_, EffectcraftApp>| h.state().session.state.selected_props.iter().map(|(_, u)| *u).collect::<Vec<_>>();
+    let pin = |h: &Harness<'_, AuroraApp>| h.state().session.state.selected_props.iter().map(|(_, u)| *u).collect::<Vec<_>>();
     // Clicking a pin selects it (instead of adding a pin on top of it).
     let at = rect(&h, &format!("viewer.puppetPin.{bend}")).center();
     click(&mut h, at);
@@ -749,7 +749,7 @@ fn puppet_pin_click_selects_and_delete_removes_only_the_pins() {
 }
 
 /// Filled circles painted this frame (flattening nested shape lists).
-fn circles(h: &Harness<'_, EffectcraftApp>) -> Vec<egui::epaint::CircleShape> {
+fn circles(h: &Harness<'_, AuroraApp>) -> Vec<egui::epaint::CircleShape> {
     fn walk(s: &egui::Shape, out: &mut Vec<egui::epaint::CircleShape>) {
         match s {
             egui::Shape::Circle(c) => out.push(*c),
@@ -780,7 +780,7 @@ fn selected_puppet_pins_are_filled_and_unselected_hollow() {
     // Pointer away from the pins (hover enlarges a pin), then look at the painted pins.
     h.input_mut().events.push(Event::PointerMoved(pos2(5.0, 5.0)));
     h.run_steps(2);
-    let col = effectcraft_ui_egui::panels::puppet_tool::pin_color(effectcraft_engine::effects::puppet::PinKind::Position);
+    let col = aurora_ui_egui::panels::puppet_tool::pin_color(aurora_engine::effects::puppet::PinKind::Position);
     let at = |p: Pos2| circles(&h).into_iter().filter(move |c| c.center.distance(p) < 0.5).collect::<Vec<_>>();
     let dark = |c: egui::Color32| c.r().max(c.g()).max(c.b()) < 0x60;
     let sel = at(pa);
@@ -831,7 +831,7 @@ fn puppet_marquee_selects_pins_and_alt_drag_works_over_the_art() {
 }
 
 /// Drag with `button` from `from` to `to` in steps, then release.
-fn drag_with(h: &mut Harness<'_, EffectcraftApp>, button: egui::PointerButton, from: Pos2, to: Pos2) {
+fn drag_with(h: &mut Harness<'_, AuroraApp>, button: egui::PointerButton, from: Pos2, to: Pos2) {
     h.input_mut().events.push(Event::PointerMoved(from));
     h.input_mut().events.push(Event::PointerButton { pos: from, button, pressed: true, modifiers: Default::default() });
     h.step();
@@ -863,7 +863,7 @@ fn middle_and_hand_drags_pan_the_viewer_and_the_pan_stays_after_release() {
 }
 
 /// A Spacebar press or release (`repeat`: the keyboard's auto-repeat while it is held).
-fn space(h: &mut Harness<'_, EffectcraftApp>, pressed: bool, repeat: bool) {
+fn space(h: &mut Harness<'_, AuroraApp>, pressed: bool, repeat: bool) {
     h.input_mut().events.push(Event::Key { key: egui::Key::Space, physical_key: None, pressed, repeat, modifiers: Default::default() });
     h.step();
 }
@@ -874,8 +874,8 @@ fn space(h: &mut Harness<'_, EffectcraftApp>, pressed: bool, repeat: bool) {
 #[test]
 fn spacebar_taps_preview_and_held_spacebar_pans_the_viewer() {
     let mut h = harness();
-    let playing = |h: &Harness<'_, EffectcraftApp>| h.state().playback.playing;
-    let tap = |h: &mut Harness<'_, EffectcraftApp>| {
+    let playing = |h: &Harness<'_, AuroraApp>| h.state().playback.playing;
+    let tap = |h: &mut Harness<'_, AuroraApp>| {
         space(h, true, false);
         space(h, false, false);
     };
@@ -896,7 +896,7 @@ fn spacebar_taps_preview_and_held_spacebar_pans_the_viewer() {
     tap(&mut h);
 
     // Held and dragged: pans the viewer (the Box under the pointer stays), and plays nothing.
-    let box_pos = |h: &Harness<'_, EffectcraftApp>| h.state().session.active_comp().unwrap().layers[0].props.prop("transform/position").unwrap().value.clone();
+    let box_pos = |h: &Harness<'_, AuroraApp>| h.state().session.active_comp().unwrap().layers[0].props.prop("transform/position").unwrap().value.clone();
     let (pos, before) = (box_pos(&h), h.state().ui.viewer.pan);
     let c = rect(&h, "viewer.comp").center();
     space(&mut h, true, false);
@@ -926,9 +926,9 @@ fn spacebar_taps_preview_and_held_spacebar_pans_the_viewer() {
 #[test]
 fn timeline_rows_drag_to_reorder_layers() {
     let mut h = harness();
-    let names = |h: &Harness<'_, EffectcraftApp>| h.state().session.active_comp().unwrap().layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let names = |h: &Harness<'_, AuroraApp>| h.state().session.active_comp().unwrap().layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
     assert_eq!(names(&h), ["Box", "Plate"]);
-    let row = |h: &Harness<'_, EffectcraftApp>, name: &str| {
+    let row = |h: &Harness<'_, AuroraApp>, name: &str| {
         let l = h.state().session.active_comp().unwrap().layers.iter().find(|l| l.name == name).unwrap().id.0;
         rect(h, &format!("timeline.layer.{l}.row"))
     };
@@ -949,22 +949,22 @@ fn timeline_rows_drag_to_reorder_layers() {
     assert_eq!(names(&h), ["Box", "Plate"]);
 }
 
-fn layer_id(h: &Harness<'_, EffectcraftApp>, name: &str) -> u64 {
+fn layer_id(h: &Harness<'_, AuroraApp>, name: &str) -> u64 {
     h.state().session.active_comp().unwrap().layers.iter().find(|l| l.name == name).unwrap().id.0
 }
 
 /// Uid of a layer's property by match path (`transform/position`).
-fn prop_uid(h: &Harness<'_, EffectcraftApp>, layer: &str, path: &str) -> u64 {
+fn prop_uid(h: &Harness<'_, AuroraApp>, layer: &str, path: &str) -> u64 {
     let id = layer_id(h, layer);
     h.state().session.active_comp().unwrap().layer(LayerId(id)).unwrap().props.prop(path).unwrap().uid
 }
 
 /// Is the property's row on screen in the Timeline?
-fn shown(h: &Harness<'_, EffectcraftApp>, uid: u64) -> bool {
+fn shown(h: &Harness<'_, AuroraApp>, uid: u64) -> bool {
     h.state().auto.find(&format!("timeline.prop.{uid}.stopwatch")).is_some()
 }
 
-fn key(h: &mut Harness<'_, EffectcraftApp>, key: egui::Key, modifiers: egui::Modifiers) {
+fn key(h: &mut Harness<'_, AuroraApp>, key: egui::Key, modifiers: egui::Modifiers) {
     h.input_mut().events.push(Event::Key { key, physical_key: None, pressed: true, repeat: false, modifiers });
     h.input_mut().events.push(Event::Key { key, physical_key: None, pressed: false, repeat: false, modifiers });
     h.run_steps(2);
@@ -1002,8 +1002,8 @@ fn timeline_rename_commits_on_enter_and_on_click_away() {
     let mut h = harness();
     h.state_mut().session.execute("layer.newNull", json!({"name": "Ctrl"})).unwrap();
     let id = layer_id(&h, "Ctrl");
-    let name = |h: &Harness<'_, EffectcraftApp>| h.state().session.active_comp().unwrap().layer(LayerId(id)).unwrap().name.clone();
-    let rename = |h: &mut Harness<'_, EffectcraftApp>| {
+    let name = |h: &Harness<'_, AuroraApp>| h.state().session.active_comp().unwrap().layer(LayerId(id)).unwrap().name.clone();
+    let rename = |h: &mut Harness<'_, AuroraApp>| {
         h.state_mut().session.execute("layer.select", json!({"layers": [id]})).unwrap();
         h.run_steps(2);
         key(h, egui::Key::Enter, Default::default());
@@ -1036,7 +1036,7 @@ fn timeline_rename_commits_on_enter_and_on_click_away() {
 }
 
 /// Press `k` twice within one frame (a quick double press: the harness' frames are long).
-fn key_twice(h: &mut Harness<'_, EffectcraftApp>, k: egui::Key) {
+fn key_twice(h: &mut Harness<'_, AuroraApp>, k: egui::Key) {
     for _ in 0..2 {
         h.input_mut().events.push(Event::Key { key: k, physical_key: None, pressed: true, repeat: false, modifiers: Default::default() });
         h.input_mut().events.push(Event::Key { key: k, physical_key: None, pressed: false, repeat: false, modifiers: Default::default() });
@@ -1049,8 +1049,8 @@ fn property_shortcuts_reveal_and_key_transform_properties() {
     let mut h = harness();
     h.state_mut().session.execute("layer.select", json!({"layers": ["Box"]})).unwrap();
     h.run_steps(2);
-    let t = |h: &Harness<'_, EffectcraftApp>, p: &str| shown(h, prop_uid(h, "Box", &format!("transform/{p}")));
-    let only = |h: &Harness<'_, EffectcraftApp>, want: &[&str]| {
+    let t = |h: &Harness<'_, AuroraApp>, p: &str| shown(h, prop_uid(h, "Box", &format!("transform/{p}")));
+    let only = |h: &Harness<'_, AuroraApp>, want: &[&str]| {
         for p in ["anchor", "position", "scale", "rotation", "opacity"] {
             assert_eq!(t(h, p), want.contains(&p), "{p} shown? want {want:?}");
         }
@@ -1068,7 +1068,7 @@ fn property_shortcuts_reveal_and_key_transform_properties() {
     key(&mut h, egui::Key::R, none);
     only(&h, &["rotation"]);
     // Alt+Shift+P: a Position keyframe at the current time; again removes it.
-    let pos_keys = |h: &Harness<'_, EffectcraftApp>| {
+    let pos_keys = |h: &Harness<'_, AuroraApp>| {
         let id = layer_id(h, "Box");
         h.state().session.active_comp().unwrap().layer(LayerId(id)).unwrap().props.prop("transform/position").unwrap().keys.len()
     };
@@ -1106,7 +1106,7 @@ fn double_press_shortcuts_reveal_their_second_set() {
     h.state_mut().session.execute("layer.select", json!({"layers": ["Box"]})).unwrap();
     h.state_mut().session.execute("prop.setExpression", json!({"layer": "Box", "path": "transform/scale", "expression": "value"})).unwrap();
     h.run_steps(2);
-    let reveal = |h: &Harness<'_, EffectcraftApp>| h.state().ui.timeline.reveal.clone();
+    let reveal = |h: &Harness<'_, AuroraApp>| h.state().ui.timeline.reveal.clone();
     // EE: properties with expressions (Scale), replacing E's effects.
     key_twice(&mut h, egui::Key::E);
     assert_eq!(reveal(&h), vec!["expressions"]);
@@ -1133,7 +1133,7 @@ fn double_press_shortcuts_reveal_their_second_set() {
 }
 
 /// Drag through `path` with `modifiers` held (press at the first point, release at the last).
-fn drag_path(h: &mut Harness<'_, EffectcraftApp>, path: &[Pos2], modifiers: egui::Modifiers) {
+fn drag_path(h: &mut Harness<'_, AuroraApp>, path: &[Pos2], modifiers: egui::Modifiers) {
     h.input_mut().events.push(Event::ModifiersChanged(modifiers));
     h.input_mut().events.push(Event::PointerMoved(path[0]));
     h.input_mut().events.push(Event::PointerButton { pos: path[0], button: egui::PointerButton::Primary, pressed: true, modifiers });
@@ -1159,10 +1159,10 @@ fn drag_path(h: &mut Harness<'_, EffectcraftApp>, path: &[Pos2], modifiers: egui
 fn handle_drags_scale_about_the_anchor_and_follow_the_pointer() {
     let mut h = harness();
     let box_id = h.state().session.active_comp().unwrap().layers[0].id;
-    let set = |h: &mut Harness<'_, EffectcraftApp>, path: &str, v: serde_json::Value| {
+    let set = |h: &mut Harness<'_, AuroraApp>, path: &str, v: serde_json::Value| {
         h.state_mut().session.execute("prop.set", json!({"layer": box_id.0, "path": path, "value": v})).unwrap();
     };
-    let scale = |h: &Harness<'_, EffectcraftApp>| {
+    let scale = |h: &Harness<'_, AuroraApp>| {
         let l = h.state().session.active_comp().unwrap().layer(box_id).unwrap().clone();
         l.props.prop("transform/scale").unwrap().value.as_vec3()
     };
@@ -1215,11 +1215,11 @@ fn full_resolution_frames_wider_than_the_texture_limit_fit() {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Wide", "width": 2400, "height": 400, "duration": 1})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Plate", "color": "#406080"})).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1600.0, 1000.0)).build_eframe(|_| AuroraApp::new(s));
     // (egui's font atlas needs 1024.)
     h.input_mut().max_texture_side = Some(1024);
-    h.state_mut().ui.viewer.res = effectcraft_ui_egui::state::Resolution::Full;
-    let full = |h: &mut Harness<'_, EffectcraftApp>| h.state_mut().viewer_pixels().is_some_and(|px| px.size == [2400, 400]);
+    h.state_mut().ui.viewer.res = aurora_ui_egui::state::Resolution::Full;
+    let full = |h: &mut Harness<'_, AuroraApp>| h.state_mut().viewer_pixels().is_some_and(|px| px.size == [2400, 400]);
     for _ in 0..400 {
         h.step();
         if full(&mut h) {

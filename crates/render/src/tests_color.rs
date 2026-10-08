@@ -2,10 +2,10 @@
 
 use std::sync::Arc;
 
-use effectcraft_color::{BlendMode, ColorSpace, Label};
-use effectcraft_project::build;
-use effectcraft_project::{AlphaMode, BitDepth, Comp, Footage, FootageKind, ItemId, ItemKind, LayerSource, Project, Solid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_color::{BlendMode, ColorSpace, Label};
+use aurora_project::build;
+use aurora_project::{AlphaMode, BitDepth, Comp, Footage, FootageKind, ItemId, ItemKind, LayerSource, Project, Solid};
+use aurora_time::{FrameRate, Tick};
 
 use crate::{FootageSource, Image, LayerCache, RenderOpts, Renderer, render_frame};
 
@@ -22,7 +22,7 @@ fn add_solid(p: &mut Project, cid: ItemId, color: [f32; 3], mode: BlendMode, opa
     let sid = p.add_item("S", Label::Red, None, ItemKind::Solid(Solid { color, width: 40, height: 20, pixel_aspect: 1.0 }));
     let mut l = build::layer(p, &comp, "S", LayerSource::Solid { item: sid }, (40, 20), None);
     l.blend_mode = mode;
-    l.props.prop_mut("transform/opacity").unwrap().value = effectcraft_keyframe::Value::Scalar(opacity);
+    l.props.prop_mut("transform/opacity").unwrap().value = aurora_keyframe::Value::Scalar(opacity);
     // New layers go on top.
     p.comp_mut(cid).unwrap().layers.insert(0, l);
 }
@@ -88,7 +88,7 @@ fn linear_blending_of_red_over_green() {
     let g = run(false);
     assert!((g[0] - 0.5).abs() < 1e-5 && (g[1] - 0.5).abs() < 1e-5 && g[2].abs() < 1e-6, "{g:?}");
     let l = run(true);
-    let e = effectcraft_color::linear_to_srgb(0.5);
+    let e = aurora_color::linear_to_srgb(0.5);
     assert!((l[0] - e).abs() < 1e-4 && (l[1] - e).abs() < 1e-4 && l[2].abs() < 1e-6, "{l:?}");
     assert!((e - 0.7354).abs() < 1e-3);
     // Unblended (opaque) layers are unchanged by linear blending.
@@ -107,7 +107,7 @@ fn linearized_working_space_blends_linear_and_round_trips_colours() {
     add_solid(&mut p, cid, [0.0, 1.0, 0.0], BlendMode::Normal, 100.0);
     add_solid(&mut p, cid, [1.0, 0.0, 0.0], BlendMode::Normal, 50.0);
     let l = px(&p, cid);
-    let e = effectcraft_color::linear_to_srgb(0.5);
+    let e = aurora_color::linear_to_srgb(0.5);
     assert!((l[0] - e).abs() < 1e-4 && (l[1] - e).abs() < 1e-4, "{l:?}");
     // An opaque solid shows its own colour (linearised in, encoded out).
     let (mut p, cid, _) = setup(BitDepth::Bpc32);

@@ -1,7 +1,7 @@
 //! 3D commands: cameras, lights, views, camera tools (with undo/redo), and the 3D demo comp.
 
-use effectcraft_project::{AutoOrient, LayerSource, LightKind};
-use effectcraft_render::three_d::View3D;
+use aurora_project::{AutoOrient, LayerSource, LightKind};
+use aurora_render::three_d::View3D;
 use serde_json::json;
 
 use crate::Session;
@@ -23,15 +23,15 @@ fn auto_orient_command() {
     let cam = s.execute("layer.newCamera", json!({})).unwrap()["layer"].as_u64().unwrap();
     assert!(s.execute("layer.autoOrient", json!({"layer": cam, "mode": "towardsCamera"})).is_err());
     s.execute("layer.autoOrient", json!({"layer": cam, "mode": "off"})).unwrap();
-    assert!(!effectcraft_render::three_d::camera::is_two_node(&s.active_comp().unwrap().layers[0]));
+    assert!(!aurora_render::three_d::camera::is_two_node(&s.active_comp().unwrap().layers[0]));
 }
 
 fn layer_count(s: &Session) -> usize {
     s.active_comp().unwrap().layers.len()
 }
 
-fn prop(s: &Session, layer: u64, path: &str) -> effectcraft_keyframe::Value {
-    let l = s.active_comp().unwrap().layer(effectcraft_project::LayerId(layer)).unwrap();
+fn prop(s: &Session, layer: u64, path: &str) -> aurora_keyframe::Value {
+    let l = s.active_comp().unwrap().layer(aurora_project::LayerId(layer)).unwrap();
     l.props.prop(path).unwrap_or_else(|| panic!("no {path}")).value.clone()
 }
 
@@ -61,8 +61,8 @@ fn camera_settings_one_node_keeps_view() {
     let cid = s.active_comp_id().unwrap();
     let fwd = |s: &Session| {
         let c = s.project.comp(cid).unwrap();
-        let ctx = effectcraft_render::EvalCtx::new(&s.project, cid, c, s.time());
-        effectcraft_render::three_d::active_camera(&ctx).forward()
+        let ctx = aurora_render::EvalCtx::new(&s.project, cid, c, s.time());
+        aurora_render::three_d::active_camera(&ctx).forward()
     };
     let before = fwd(&s);
     s.execute("layer.cameraSettings", json!({"layer": id, "type": "oneNode", "dof": true, "aperture": 30})).unwrap();
@@ -133,7 +133,7 @@ fn draft_3d_turns_off_lighting() {
     let id = s.execute("layer.newSolid", json!({"width": 640, "height": 360, "color": [1, 1, 1]})).unwrap()["layer"].as_u64().unwrap();
     s.execute("layer.setSwitch", json!({"layer": id, "switch": "threeD", "value": true})).unwrap();
     s.execute("layer.newLight", json!({"kind": "Point", "intensity": 50, "position": [320, 180, -400]})).unwrap();
-    let px = |s: &Session| s.render(cid, s.time(), effectcraft_render::RenderOpts::default()).get(320, 180)[0];
+    let px = |s: &Session| s.render(cid, s.time(), aurora_render::RenderOpts::default()).get(320, 180)[0];
     assert!(px(&s) < 0.5);
     s.execute("comp.setSwitch", json!({"switch": "draft3d", "value": true})).unwrap();
     assert!((px(&s) - 1.0).abs() < 1e-5);
@@ -213,8 +213,7 @@ fn demo_has_3d_showcase() {
     assert!(c.layers.iter().any(|l| l.is_camera()));
     assert!(c.layers.iter().any(|l| l.is_light()));
     assert!(c.layers.iter().filter(|l| l.switches.three_d).count() >= 4);
-    let img =
-        s.render(cid, effectcraft_time::Tick::from_seconds_f64(4.0), effectcraft_render::RenderOpts { scale: 0.125, motion_blur: false, ..Default::default() });
+    let img = s.render(cid, aurora_time::Tick::from_seconds_f64(4.0), aurora_render::RenderOpts { scale: 0.125, motion_blur: false, ..Default::default() });
     let lit = img.data.iter().filter(|p| p[3] > 0.99 && p[0] + p[1] + p[2] > 0.3).count();
     assert!(lit > 2_000, "{lit}");
 }

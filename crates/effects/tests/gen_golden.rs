@@ -14,9 +14,9 @@
 //!
 //! `GEN_GOLDEN_PRINT=1` prints the table (to re-pin after an intended change).
 
-use effectcraft_effects::{Buf, EffectCtx, EffectEnv, EffectHost, LayerPixels, MaskShape, Params, apply, default_value, find};
-use effectcraft_keyframe::Value;
-use effectcraft_raster::Image;
+use aurora_effects::{Buf, EffectCtx, EffectEnv, EffectHost, LayerPixels, MaskShape, Params, apply, default_value, find};
+use aurora_keyframe::Value;
+use aurora_raster::Image;
 
 const W: u32 = 64;
 const H: u32 = 48;

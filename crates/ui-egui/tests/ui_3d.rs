@@ -1,22 +1,22 @@
 //! Headless UI checks for the 3D viewer (egui_kittest). The `snapshot` test renders the window
-//! with wgpu and writes PNGs when `EC_SNAPSHOT_DIR` is set (`cargo test -p effectcraft-ui-egui
+//! with wgpu and writes PNGs when `EC_SNAPSHOT_DIR` is set (`cargo test -p aurora-ui-egui
 //! --test ui_3d -- --ignored`); the other test only runs the UI logic.
 
-use effectcraft_engine::Session;
-use effectcraft_ui_egui::EffectcraftApp;
+use aurora_engine::Session;
+use aurora_ui_egui::AuroraApp;
 use egui_kittest::Harness;
 use serde_json::json;
 
-fn app() -> EffectcraftApp {
+fn app() -> AuroraApp {
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
     s.execute("comp.open", json!({"comp": "3D Showcase"})).unwrap();
     s.execute("time.set", json!({"time": 5.0})).unwrap();
-    EffectcraftApp::new(s)
+    AuroraApp::new(s)
 }
 
 /// Step the UI until background frame renders have landed.
-fn settle(h: &mut Harness<'_, EffectcraftApp>) {
+fn settle(h: &mut Harness<'_, AuroraApp>) {
     for _ in 0..600 {
         h.step();
         if h.state().frames.inflight() == 0 && h.state().frames.last_ms.lock().map(|v| *v > 0.0).unwrap_or(false) {
@@ -53,8 +53,8 @@ fn camera_and_light_dialogs_create_layers() {
     h.step();
     let ctx = h.ctx.clone();
     let n0 = h.state().session.active_comp().unwrap().layers.len();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newCamera", json!({})).unwrap();
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::CameraSettings));
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newCamera", json!({})).unwrap();
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::CameraSettings));
     h.step();
     let ok = h.state().auto.elements.iter().chain(h.state().auto.previous.iter()).find(|e| e.id == "dialog.camera.ok").map(|e| e.rect);
     assert!(ok.is_some(), "camera dialog OK registered");
@@ -63,15 +63,15 @@ fn camera_and_light_dialogs_create_layers() {
     h.step();
     assert!(h.state().dialog.is_none());
     assert_eq!(h.state().session.active_comp().unwrap().layers.len(), n0 + 1);
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newLight", json!({})).unwrap();
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::LightSettings));
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newLight", json!({})).unwrap();
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::LightSettings));
     h.step();
     h.key_press(egui::Key::Enter);
     h.step();
     assert_eq!(h.state().session.active_comp().unwrap().layers.len(), n0 + 2);
     // Layer Settings on the new light reopens Light Settings for it.
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.settings", json!({})).unwrap();
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::LightSettings));
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.settings", json!({})).unwrap();
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::LightSettings));
 }
 
 #[test]
@@ -92,14 +92,14 @@ fn snapshot() {
         }
     }
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newCamera", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newCamera", json!({})).unwrap();
     h.run_steps(3);
     let img = h.render().expect("render");
     if let Some(d) = &dir {
         img.save(format!("{d}/ui3d_camera_dialog.png")).unwrap();
     }
     h.state_mut().dialog = None;
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newLight", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "layer.newLight", json!({})).unwrap();
     h.run_steps(3);
     let img = h.render().expect("render");
     if let Some(d) = &dir {
@@ -109,7 +109,7 @@ fn snapshot() {
     h.state_mut().dialog = None;
     h.state_mut().session.execute("view.3d.activeCamera", json!({})).unwrap();
     h.state_mut().session.execute("layer.select", json!({"layers": ["Card Blue"]})).unwrap();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.rotation", json!({})).unwrap();
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "timeline.reveal.rotation", json!({})).unwrap();
     settle(&mut h);
     let img = h.render().expect("render");
     if let Some(d) = &dir {

@@ -4,8 +4,8 @@
 //! Edit** (the same, after pushing later layers — and the later part of layers crossing the
 //! current time — back by the clip's duration).
 
-use effectcraft_project::{ItemId, ItemKind, LayerSource, build};
-use effectcraft_time::Tick;
+use aurora_project::{ItemId, ItemKind, LayerSource, build};
+use aurora_time::Tick;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -32,18 +32,18 @@ fn footage_item(s: &Session, p: &Value, cmd: &str) -> Result<ItemId> {
     }
     .ok_or_else(|| bad(cmd, "no footage: pass `item` or open one in the Footage panel"))?;
     match s.project.item(id).map(|i| &i.kind) {
-        Some(ItemKind::Footage(f)) if f.kind != effectcraft_project::FootageKind::Data => Ok(id),
+        Some(ItemKind::Footage(f)) if f.kind != aurora_project::FootageKind::Data => Ok(id),
         Some(ItemKind::Solid(_)) => Ok(id),
         _ => Err(bad(cmd, format!("item {} is not footage", id.0))),
     }
 }
 
 /// Source duration and frame rate of a footage / solid item (stills: `None`).
-fn source_timing(s: &Session, item: ItemId) -> (Option<Tick>, effectcraft_time::FrameRate) {
+fn source_timing(s: &Session, item: ItemId) -> (Option<Tick>, aurora_time::FrameRate) {
     match s.project.item(item).map(|i| &i.kind) {
-        Some(ItemKind::Footage(f)) if f.kind != effectcraft_project::FootageKind::Still && f.duration > Tick::ZERO => (Some(f.duration), f.frame_rate),
+        Some(ItemKind::Footage(f)) if f.kind != aurora_project::FootageKind::Still && f.duration > Tick::ZERO => (Some(f.duration), f.frame_rate),
         Some(ItemKind::Footage(f)) => (None, f.frame_rate),
-        _ => (None, s.active_comp().map(|c| c.frame_rate).unwrap_or(effectcraft_time::FrameRate::FPS_30)),
+        _ => (None, s.active_comp().map(|c| c.frame_rate).unwrap_or(aurora_time::FrameRate::FPS_30)),
     }
 }
 

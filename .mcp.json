@@ -1,12 +1,12 @@
 {
   "mcpServers": {
-    "effectcraft": {
+    "aurora": {
       "command": "cargo",
-      "args": ["run", "--quiet", "--release", "-p", "effectcraft-cli", "--", "mcp", "--demo"]
+      "args": ["run", "--quiet", "--release", "-p", "aurora-cli", "--", "mcp", "--demo"]
     },
-    "effectcraft-app": {
+    "aurora-app": {
       "command": "cargo",
-      "args": ["run", "--quiet", "--release", "-p", "effectcraft-cli", "--", "mcp", "--bridge", "9877"]
+      "args": ["run", "--quiet", "--release", "-p", "aurora-cli", "--", "mcp", "--bridge", "9877"]
     }
   }
 }

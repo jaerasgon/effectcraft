@@ -443,7 +443,7 @@ pub(crate) fn mat3_inverse(m: &[f64; 16]) -> Option<[[f64; 3]; 3]> {
     let a = [[m[0], m[1], m[2]], [m[4], m[5], m[6]], [m[8], m[9], m[10]]];
     let det = a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) - a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0])
         + a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0]);
-    (det.abs() > 1e-12).then(|| effectcraft_color::space::invert(&a))
+    (det.abs() > 1e-12).then(|| aurora_color::space::invert(&a))
 }
 
 fn log_base(v: f64, base: f64) -> f64 {
@@ -527,7 +527,7 @@ impl Xf {
                 match mat3_inverse(m) {
                     Some(inv) => {
                         let d = [c[0] - offset[0], c[1] - offset[1], c[2] - offset[2]];
-                        effectcraft_color::space::mul_vec(&inv, d)
+                        aurora_color::space::mul_vec(&inv, d)
                     }
                     None => c,
                 }
@@ -893,7 +893,7 @@ colorspaces:
     /// The OCIO Color Space and Display Transform effects with Configuration ▸ Custom.
     #[test]
     fn effects_use_a_custom_config() {
-        use effectcraft_keyframe::Value;
+        use aurora_keyframe::Value;
         let cfg = "ocio_profile_version: 1\nroles:\n  default: lin\ndisplays:\n  Monitor:\n    - !<View> {name: Video, colorspace: g2}\ncolorspaces:\n  - !<ColorSpace>\n    name: lin\n  - !<ColorSpace>\n    name: g2\n    to_reference: !<ExponentTransform> {value: [2, 2, 2, 1]}\n";
         let img = crate::Image::filled(2, 2, [0.5, 0.25, 1.0, 1.0]);
         let fx = |id: &str, extra: &[(&str, Value)]| {

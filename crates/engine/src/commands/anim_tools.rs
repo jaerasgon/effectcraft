@@ -11,9 +11,9 @@
 //! * `motion.sketch` turns a recorded pointer path (comp pixels, with capture timestamps) into
 //!   Position keys, one per frame, then smooths them like the Smoother.
 
-use effectcraft_keyframe::{Interp, Keyframe, Value as KValue, evaluate};
-use effectcraft_project::{LayerId, Uid};
-use effectcraft_time::{FrameRate, Tick};
+use aurora_keyframe::{Interp, Keyframe, Value as KValue, evaluate};
+use aurora_project::{LayerId, Uid};
+use aurora_time::{FrameRate, Tick};
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, f_p, has_comp, has_keys, layer_mut, layer_p, str_p};
@@ -283,8 +283,7 @@ fn run_on_selection(
             if times.len() < min || !pr.value.interpolates() {
                 continue;
             }
-            let (Some(a), Some(b)) =
-                (effectcraft_keyframe::key_at(&pr.keys, times[0]), effectcraft_keyframe::key_at(&pr.keys, *times.last().unwrap_or(&times[0])))
+            let (Some(a), Some(b)) = (aurora_keyframe::key_at(&pr.keys, times[0]), aurora_keyframe::key_at(&pr.keys, *times.last().unwrap_or(&times[0])))
             else {
                 continue;
             };

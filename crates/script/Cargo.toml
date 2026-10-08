@@ -1,6 +1,6 @@
 [package]
-name = "effectcraft-script"
-description = "EffectCraft scripting: JavaScript (boa) with an After Effects-style object model (app, project, CompItem, Layer, Property…) over the engine's undoable commands"
+name = "aurora-script"
+description = "Aurora scripting: JavaScript (boa) with an After Effects-style object model (app, project, CompItem, Layer, Property…) over the engine's undoable commands"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,12 +10,12 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-effectcraft-engine = { workspace = true }
-effectcraft-project = { workspace = true }
-effectcraft-keyframe = { workspace = true }
-effectcraft-time = { workspace = true }
-effectcraft-render = { workspace = true }
-effectcraft-path = { workspace = true }
+aurora-engine = { workspace = true }
+aurora-project = { workspace = true }
+aurora-keyframe = { workspace = true }
+aurora-time = { workspace = true }
+aurora-render = { workspace = true }
+aurora-path = { workspace = true }
 serde_json = { workspace = true }
 boa_engine = { workspace = true }
 
@@ -24,4 +24,4 @@ boa_engine = { workspace = true }
 boa_engine = { workspace = true, features = ["js"] }
 
 [dev-dependencies]
-effectcraft-expr = { workspace = true }
+aurora-expr = { workspace = true }

@@ -1,11 +1,11 @@
 //! Help ▸ Enable Logging / Reveal Logging File: a `log` logger that, while enabled, appends
-//! every record to `Logs/EffectCraft Log.txt` in the settings folder (or the temporary folder),
+//! every record to `Logs/Aurora Log.txt` in the settings folder (or the temporary folder),
 //! and always keeps the last few hundred warnings and errors in memory for the System
 //! Compatibility Report.
 //!
 //! Frontends call [`install`] once at startup; [`set_enabled`] (the `help.enableLogging`
 //! command) turns file logging on and off. `RUST_LOG` (a level such as `debug`, or per target:
-//! `effectcraft=debug,wgpu=warn`) also prints what it lets through to stderr, so a start-up that
+//! `aurora=debug,wgpu=warn`) also prints what it lets through to stderr, so a start-up that
 //! fails before the window opens leaves a trace.
 
 use std::collections::VecDeque;
@@ -32,7 +32,7 @@ const RECENT: usize = 300;
 
 impl log::Log for Logger {
     fn enabled(&self, m: &log::Metadata) -> bool {
-        m.level() <= log::Level::Warn || (ENABLED.load(Ordering::Relaxed) && m.target().starts_with("effectcraft")) || to_stderr(m)
+        m.level() <= log::Level::Warn || (ENABLED.load(Ordering::Relaxed) && m.target().starts_with("aurora")) || to_stderr(m)
     }
     fn log(&self, r: &log::Record) {
         if !self.enabled(r.metadata()) {
@@ -112,7 +112,7 @@ pub fn install_panic_hook() {
 
 /// The log file inside `config_dir` (the settings folder), or the temporary folder.
 pub fn log_path(config_dir: Option<&Path>) -> PathBuf {
-    config_dir.map(Path::to_path_buf).unwrap_or_else(std::env::temp_dir).join("Logs").join("EffectCraft Log.txt")
+    config_dir.map(Path::to_path_buf).unwrap_or_else(std::env::temp_dir).join("Logs").join("Aurora Log.txt")
 }
 
 /// Turn file logging on (writing to `file`) or off.
@@ -123,7 +123,7 @@ pub fn set_enabled(on: bool, file: PathBuf) -> std::io::Result<()> {
             std::fs::create_dir_all(d)?;
         }
         let mut f = std::fs::OpenOptions::new().create(true).append(true).open(&file)?;
-        writeln!(f, "{} INFO  effectcraft: logging enabled ({} {})", unix_secs(), std::env::consts::OS, env!("CARGO_PKG_VERSION"))?;
+        writeln!(f, "{} INFO  aurora: logging enabled ({} {})", unix_secs(), std::env::consts::OS, env!("CARGO_PKG_VERSION"))?;
     }
     if let Ok(mut st) = STATE.lock() {
         st.file = Some(file);
@@ -153,11 +153,11 @@ mod tests {
     /// `RUST_LOG` picks what start-up prints to stderr (#234).
     #[test]
     fn rust_log_filters_by_level_and_target() {
-        let f = parse_filter("info, wgpu=warn,wgpu_core=debug, effectcraft , bogus=loud");
+        let f = parse_filter("info, wgpu=warn,wgpu_core=debug, aurora , bogus=loud");
         assert_eq!(level_for(&f, "eframe::native"), LevelFilter::Info);
         assert_eq!(level_for(&f, "wgpu_hal::metal"), LevelFilter::Warn);
         assert_eq!(level_for(&f, "wgpu_core::device"), LevelFilter::Debug, "the longest matching target wins");
-        assert_eq!(level_for(&f, "effectcraft_ui_egui"), LevelFilter::Trace, "a bare target: every level");
+        assert_eq!(level_for(&f, "aurora_ui_egui"), LevelFilter::Trace, "a bare target: every level");
         assert_eq!(f.len(), 4, "an unknown level is skipped");
         assert_eq!(level_for(&parse_filter("wgpu=debug"), "winit"), LevelFilter::Off);
         assert!(parse_filter("").is_empty());

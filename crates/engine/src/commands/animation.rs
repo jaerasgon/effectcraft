@@ -1,19 +1,19 @@
-//! Animation menu: animation presets (EffectCraft's own JSON format), Add Keyframe, Keyframe
+//! Animation menu: animation presets (Aurora's own JSON format), Add Keyframe, Keyframe
 //! Assistant (Exponential Scale), text animators/selectors, and the
 //! Reveal Properties commands.
 
 use std::collections::BTreeMap;
 
-use effectcraft_keyframe::{Interp, Keyframe, Value as KV};
-use effectcraft_project::{GroupKind, LayerId, Node, PropGroup, Property, Uid};
-use effectcraft_time::Tick;
+use aurora_keyframe::{Interp, Keyframe, Value as KV};
+use aurora_project::{GroupKind, LayerId, Node, PropGroup, Property, Uid};
+use aurora_time::Tick;
 use serde_json::{Value, json};
 
 use super::{CommandSpec, bad, frontend, has_comp, has_keys, has_layers, layer_mut, layers_p, match_path_of, selected_leaf_props, str_p};
 use crate::{EngineError, KeyRef, Result, Session, cmd};
 
 /// Preset file format version tag (`*.ecpreset`, JSON).
-pub const PRESET_TAG: &str = "effectcraftAnimationPreset";
+pub const PRESET_TAG: &str = "auroraAnimationPreset";
 
 fn has_selected_props(s: &Session) -> std::result::Result<(), String> {
     has_comp(s)?;
@@ -97,7 +97,7 @@ fn apply_preset(s: &mut Session, p: &Value) -> Result<Value> {
         _ => return Err(bad("anim.applyPreset", "missing `path` (or inline `preset`)")),
     };
     if doc.get(PRESET_TAG).is_none() {
-        return Err(bad("anim.applyPreset", "not an EffectCraft animation preset"));
+        return Err(bad("anim.applyPreset", "not an Aurora animation preset"));
     }
     let (cid, ids) = layers_p(s, p)?;
     if ids.is_empty() {
@@ -248,7 +248,7 @@ fn exponential_scale(s: &mut Session, _: &Value) -> Result<Value> {
                 let mut k = Keyframe::new(t, KV::Vec3(v));
                 k.in_interp = Interp::Linear;
                 k.out_interp = Interp::Linear;
-                effectcraft_keyframe::set_key(&mut pr.keys, k);
+                aurora_keyframe::set_key(&mut pr.keys, k);
                 st.selected_keys.push(KeyRef { layer: *lid, prop: *uid, time: t });
             }
             done += 1;
@@ -309,7 +309,7 @@ fn reveal(s: &mut Session, p: &Value) -> Result<Value> {
     let mut out = vec![];
     for lid in &layers {
         let Some(l) = comp.layer(*lid) else { continue };
-        let (w, h) = effectcraft_render::source_size(&s.project, l);
+        let (w, h) = aurora_render::source_size(&s.project, l);
         let anchor = [w as f64 / 2.0, h as f64 / 2.0];
         let center = [comp.width as f64 / 2.0, comp.height as f64 / 2.0];
         for top in l.props.groups() {

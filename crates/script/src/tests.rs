@@ -3,15 +3,15 @@
 
 use std::sync::Arc;
 
-use effectcraft_engine::Session;
-use effectcraft_engine::keyframe::Value as KV;
-use effectcraft_engine::project::{Comp, ItemId, Layer};
+use aurora_engine::Session;
+use aurora_engine::keyframe::Value as KV;
+use aurora_engine::project::{Comp, ItemId, Layer};
 use serde_json::{Value, json};
 
 use crate::{Outcome, run_code};
 
 fn session() -> Session {
-    let mut s = Session { expr: Some(Arc::new(effectcraft_expr::Expressions)), expr_check: Some(effectcraft_expr::check_syntax), ..Default::default() };
+    let mut s = Session { expr: Some(Arc::new(aurora_expr::Expressions)), expr_check: Some(aurora_expr::check_syntax), ..Default::default() };
     crate::install(&mut s);
     s
 }
@@ -52,7 +52,7 @@ fn builds_a_comp_end_to_end() {
         txt.setParentWithJump(nul);
         bg.blendingMode = BlendingMode.MULTIPLY;
         var rq = app.project.renderQueue.items.add(comp);
-        rq.outputModule(1).file = new File("/tmp/effectcraft-script-test/out.mp4");
+        rq.outputModule(1).file = new File("/tmp/aurora-script-test/out.mp4");
         app.endUndoGroup();
         writeLn("layers: " + comp.numLayers);
         [comp.numLayers, pos.numKeys, pos.keyValue(2)[0], txt.transform.opacity.value, comp.layer(1).name]
@@ -73,7 +73,7 @@ fn builds_a_comp_end_to_end() {
     assert_eq!(title.props.prop("transform/opacity").unwrap().expr.as_ref().unwrap().text, "50 + 25");
     assert_eq!(title.parent, Some(layer(c, "Null 1").id));
     let bg = layer(c, "BG");
-    assert_eq!(bg.blend_mode, effectcraft_engine::color::BlendMode::Multiply);
+    assert_eq!(bg.blend_mode, aurora_engine::color::BlendMode::Multiply);
     let fx = bg.props.group("effects/#1").unwrap();
     assert_eq!(fx.match_id, "ec.blur.gaussian");
     assert_eq!(bg.props.prop("effects/#1/blurriness").unwrap().value, KV::Scalar(12.0));
@@ -323,8 +323,7 @@ fn layers_items_and_markers() {
     assert!(
         c.layers
             .iter()
-            .any(|l| l.name == "Key"
-                && matches!(l.source, effectcraft_engine::project::LayerSource::Light { kind: effectcraft_engine::project::LightKind::Spot }))
+            .any(|l| l.name == "Key" && matches!(l.source, aurora_engine::project::LayerSource::Light { kind: aurora_engine::project::LightKind::Spot }))
     );
 }
 
@@ -408,7 +407,7 @@ fn engine_entry_points() {
 #[test]
 fn console_keeps_variables() {
     let mut s = session();
-    let req = |code: &'static str| effectcraft_engine::ScriptRequest { code, name: "console", console: true };
+    let req = |code: &'static str| aurora_engine::ScriptRequest { code, name: "console", console: true };
     let r = crate::run(&mut s, &req("var counter = 41;"));
     assert!(r.error.is_none(), "{r:?}");
     let r = crate::run(&mut s, &req("counter + 1"));
@@ -504,7 +503,7 @@ fn motion_graphics_template_hooks_add_mirrors_and_controllers() {
     assert_eq!(o.result, json!([true, true, true, 2, "Fade", "Fade", "Fade Again"]));
     let (_, c) = comp_named(&s, "Card");
     let eg = c.essential.as_ref().unwrap();
-    assert!(matches!(eg.controls[1].kind, effectcraft_engine::project::essential::EgKind::Mirror { of } if of == eg.controls[0].id));
+    assert!(matches!(eg.controls[1].kind, aurora_engine::project::essential::EgKind::Mirror { of } if of == eg.controls[0].id));
 }
 
 #[test]

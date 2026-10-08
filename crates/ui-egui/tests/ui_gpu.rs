@@ -1,12 +1,12 @@
 //! The viewer on the GPU compositor (egui_kittest with wgpu): frames composited on the GPU match
 //! the CPU viewer. Skips without a GPU adapter (CI). Set `EC_SNAPSHOT_DIR` to keep PNGs.
 
-use effectcraft_engine::Session;
-use effectcraft_ui_egui::EffectcraftApp;
+use aurora_engine::Session;
+use aurora_ui_egui::AuroraApp;
 use egui_kittest::Harness;
 use serde_json::json;
 
-fn settle(h: &mut Harness<'_, EffectcraftApp>) {
+fn settle(h: &mut Harness<'_, AuroraApp>) {
     for _ in 0..600 {
         h.step();
         if h.state().frames.inflight() == 0 && h.state().frames.last_ms.lock().map(|v| *v > 0.0).unwrap_or(false) {
@@ -21,18 +21,18 @@ fn settle(h: &mut Harness<'_, EffectcraftApp>) {
 
 #[test]
 fn viewer_draws_gpu_frames_that_match_the_cpu() {
-    let Some(probe) = effectcraft_gpu::Gpu::headless() else {
+    let Some(probe) = aurora_gpu::Gpu::headless() else {
         eprintln!("no GPU adapter: skipping");
         return;
     };
-    eprintln!("headless compositor adapter: {}", effectcraft_engine::render::Accelerator::name(&probe));
+    eprintln!("headless compositor adapter: {}", aurora_engine::render::Accelerator::name(&probe));
     // egui-wgpu creates its GL device with WebGL2's limits, which the compositor declines.
-    let gl = effectcraft_engine::render::Accelerator::name(&probe).ends_with("(Gl)");
+    let gl = aurora_engine::render::Accelerator::name(&probe).ends_with("(Gl)");
     drop(probe);
     let mut s = Session::default();
     s.execute("file.openDemoProject", json!({})).unwrap();
     s.execute("time.set", json!({"time": 2.0})).unwrap();
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_pixels_per_point(1.0).wgpu().build_eframe(|_| EffectcraftApp::new(s));
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_pixels_per_point(1.0).wgpu().build_eframe(|_| AuroraApp::new(s));
     settle(&mut h);
     if gl && h.state().gpu_adapter().is_none() {
         eprintln!("egui-wgpu's GL device has WebGL2 limits: the viewer stays on the CPU, skipping");

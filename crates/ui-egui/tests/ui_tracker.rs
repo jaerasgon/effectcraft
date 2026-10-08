@@ -1,26 +1,26 @@
 //! Headless checks for the Tracker panel and the viewer's track point widgets (egui_kittest, UI
 //! logic only: no GPU needed).
 
-use effectcraft_engine::Session;
-use effectcraft_ui_egui::EffectcraftApp;
-use effectcraft_ui_egui::dock::PanelKind;
+use aurora_engine::Session;
+use aurora_ui_egui::AuroraApp;
+use aurora_ui_egui::dock::PanelKind;
 use egui_kittest::Harness;
 use serde_json::json;
 
-fn app() -> EffectcraftApp {
+fn app() -> AuroraApp {
     let mut s = Session::default();
     s.execute("comp.new", json!({"name": "Track", "width": 640, "height": 360, "duration": 2})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Plate", "color": "#406080"})).unwrap();
     s.execute("layer.newSolid", json!({"name": "Target", "width": 80, "height": 80})).unwrap();
     s.execute("layer.select", json!({"layers": ["Plate"]})).unwrap();
-    EffectcraftApp::new(s)
+    AuroraApp::new(s)
 }
 
-fn ids(h: &Harness<'_, EffectcraftApp>) -> Vec<String> {
+fn ids(h: &Harness<'_, AuroraApp>) -> Vec<String> {
     h.state().auto.previous.iter().chain(h.state().auto.elements.iter()).map(|e| e.id.clone()).collect()
 }
 
-fn rect(h: &Harness<'_, EffectcraftApp>, id: &str) -> egui::Rect {
+fn rect(h: &Harness<'_, AuroraApp>, id: &str) -> egui::Rect {
     let e = h.state().auto.find(id).unwrap_or_else(|| panic!("no {id}"));
     egui::Rect::from_min_size(egui::pos2(e.rect[0], e.rect[1]), egui::vec2(e.rect[2], e.rect[3]))
 }
@@ -107,11 +107,11 @@ fn tracker_panel_and_track_point_widgets() {
     assert_eq!(undo, 2, "one undo step per drag");
     // Options and Edit Target dialogs.
     let ctx = h.ctx.clone();
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "track.optionsDialog", json!({})).unwrap();
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::TrackOptions));
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "track.optionsDialog", json!({})).unwrap();
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::TrackOptions));
     h.step();
     assert!(ids(&h).iter().any(|i| i == "dialog.trackOptions.ok"));
     h.state_mut().dialog = None;
-    effectcraft_ui_egui::menus::invoke(h.state_mut(), &ctx, "track.editTargetDialog", json!({})).unwrap();
-    assert_eq!(h.state().dialog, Some(effectcraft_ui_egui::Dialog::TrackTarget));
+    aurora_ui_egui::menus::invoke(h.state_mut(), &ctx, "track.editTargetDialog", json!({})).unwrap();
+    assert_eq!(h.state().dialog, Some(aurora_ui_egui::Dialog::TrackTarget));
 }

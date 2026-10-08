@@ -1,5 +1,5 @@
 # Release pipeline: every push to `release` builds signed installers for every platform and
-# creates or updates the draft GitHub Release "EffectCraft v<version>". See docs/releasing.md.
+# creates or updates the draft GitHub Release "Aurora v<version>". See docs/releasing.md.
 #
 # All jobs run in the `release` environment (restricted to the `release` branch), which holds
 # the signing secrets. Every secret is optional: missing ones produce unsigned artifacts and a
@@ -28,7 +28,7 @@ env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: 0
   RUST_BACKTRACE: 1
-  EFFECTCRAFT_BUILD_SHA: ${{ github.sha }}
+  AURORA_BUILD_SHA: ${{ github.sha }}
   INPUT_VERSION: ${{ inputs.version }}
 
 jobs:
@@ -58,7 +58,7 @@ jobs:
             echo "date=$(date -u +%Y-%m-%d)"
             echo "prerelease=$pre"
           } >>"$GITHUB_OUTPUT"
-          echo "### EffectCraft v$v (\`${GITHUB_SHA::9}\`)" >>"$GITHUB_STEP_SUMMARY"
+          echo "### Aurora v$v (\`${GITHUB_SHA::9}\`)" >>"$GITHUB_STEP_SUMMARY"
 
   macos:
     name: macOS universal
@@ -66,8 +66,8 @@ jobs:
     runs-on: macos-15-xlarge  # M2 Pro larger runner; use only in release.yml (actions_macos_xl budget caps spend)
     environment: release
     env:
-      EFFECTCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      EFFECTCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      AURORA_VERSION: ${{ needs.version.outputs.version }}
+      AURORA_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -78,7 +78,7 @@ jobs:
           key: release-macos-universal
       - name: Apply version override
         if: inputs.version != ''
-        run: cargo xtask version set "$EFFECTCRAFT_VERSION"
+        run: cargo xtask version set "$AURORA_VERSION"
       - name: Import signing certificate
         env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
@@ -116,8 +116,8 @@ jobs:
           # .github/workflows/windows-arm64.yml installs and runs it on ARM64 hardware.
           - { arch: arm64, target: aarch64-pc-windows-msvc }
     env:
-      EFFECTCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      EFFECTCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      AURORA_VERSION: ${{ needs.version.outputs.version }}
+      AURORA_BUILD_DATE: ${{ needs.version.outputs.date }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -129,7 +129,7 @@ jobs:
       - name: Apply version override
         if: inputs.version != ''
         shell: bash
-        run: cargo xtask version set "$EFFECTCRAFT_VERSION"
+        run: cargo xtask version set "$AURORA_VERSION"
       - name: Install WiX
         shell: pwsh
         run: dotnet tool install --global wix --version 5.0.2
@@ -165,8 +165,8 @@ jobs:
           - { arch: x86_64, runner: ubuntu-22.04, deb: amd64 }
           - { arch: aarch64, runner: ubuntu-22.04-arm, deb: arm64 }
     env:
-      EFFECTCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      EFFECTCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      AURORA_VERSION: ${{ needs.version.outputs.version }}
+      AURORA_BUILD_DATE: ${{ needs.version.outputs.date }}
       NFPM_VERSION: 2.47.0
     steps:
       - uses: actions/checkout@v4
@@ -185,15 +185,15 @@ jobs:
           key: release-linux-${{ matrix.arch }}
       - name: Apply version override
         if: inputs.version != ''
-        run: cargo xtask version set "$EFFECTCRAFT_VERSION"
+        run: cargo xtask version set "$AURORA_VERSION"
       - name: Build and package (AppImage, deb, rpm, tar.gz)
         run: packaging/linux/package.sh
       - name: Check the packages
         run: |
           dpkg-deb --info dist/release/*.deb
-          dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/effectcraft$|metainfo|applications'
-          ldd target/release/effectcraft
-          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/ai.storyteller.effectcraft.yml')); assert m['id'] == 'ai.storyteller.effectcraft'"
+          dpkg-deb --contents dist/release/*.deb | grep -E 'usr/bin/aurora$|metainfo|applications'
+          ldd target/release/aurora
+          python3 -c "import yaml; m = yaml.safe_load(open('packaging/linux/flatpak/com.jaerasgon.aurora.yml')); assert m['id'] == 'com.jaerasgon.aurora'"
           for appimage in dist/release/*.AppImage; do
             chmod +x "$appimage"
             APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" --version
@@ -210,8 +210,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     env:
-      EFFECTCRAFT_VERSION: ${{ needs.version.outputs.version }}
-      EFFECTCRAFT_BUILD_DATE: ${{ needs.version.outputs.date }}
+      AURORA_VERSION: ${{ needs.version.outputs.version }}
+      AURORA_BUILD_DATE: ${{ needs.version.outputs.date }}
       WASM_BINDGEN_VERSION: 0.2.129
     steps:
       - uses: actions/checkout@v4
@@ -230,7 +230,7 @@ jobs:
           wasm-bindgen --version
       - name: Apply version override
         if: inputs.version != ''
-        run: cargo xtask version set "$EFFECTCRAFT_VERSION"
+        run: cargo xtask version set "$AURORA_VERSION"
       - name: Build and zip
         run: packaging/web/package.sh
       - uses: actions/upload-artifact@v4
@@ -265,7 +265,7 @@ jobs:
         working-directory: artifacts
         run: |
           tag="v$VERSION"
-          title="EffectCraft v$VERSION"
+          title="Aurora v$VERSION"
           pre=()
           if [ "$PRERELEASE" = true ]; then pre=(--prerelease); fi
           if draft="$(gh release view "$tag" --json isDraft --jq .isDraft 2>/dev/null)"; then

@@ -12,9 +12,9 @@
 //! cross-fading two evolution offsets one cycle apart; Turbulent Noise's Turbulence Factor makes
 //! finer layers evolve and drift faster than coarse ones.
 
-use effectcraft_color::{BlendMode, blend_pixel};
-use effectcraft_keyframe::Value;
-use effectcraft_project::ParamUi;
+use aurora_color::{BlendMode, blend_pixel};
+use aurora_keyframe::Value;
+use aurora_project::ParamUi;
 use rayon::prelude::*;
 
 use crate::generate::value_noise;
@@ -326,7 +326,7 @@ impl Fractal {
     }
 }
 
-/// Fractal / Turbulent Noise resolved for the GPU kernel (effectcraft-gpu `fx_noise`): the
+/// Fractal / Turbulent Noise resolved for the GPU kernel (aurora-gpu `fx_noise`): the
 /// per-pixel constants and, per octave, the terms [`Fractal::raw`] computes before touching the
 /// pixel, in the same f32 order.
 pub struct FractalGpu {
@@ -356,7 +356,7 @@ pub struct FractalGpu {
 
 /// [`FractalGpu`] for a buffer with `offset` / `scale`.
 pub fn fractal_gpu(ctx: &EffectCtx, offset: [f64; 2], scale: f64, turbulent: bool) -> FractalGpu {
-    let b = Buf { img: effectcraft_raster::Image::new(0, 0), offset, scale };
+    let b = Buf { img: aurora_raster::Image::new(0, 0), offset, scale };
     let fr = Fractal::from_params(ctx, &b, turbulent);
     let n_oct = fr.octaves.ceil() as usize;
     let frac = fr.octaves - fr.octaves.floor();
@@ -463,7 +463,7 @@ fn turbulent_noise(ctx: &EffectCtx, b: Buf) -> Buf {
 mod tests {
     use super::*;
     use crate::{EffectEnv, run_fx};
-    use effectcraft_raster::Image;
+    use aurora_raster::Image;
 
     fn run(id: &str, vals: &[(&str, Value)]) -> Image {
         run_fx(id, vals, Image::filled(40, 24, [0.2, 0.4, 0.6, 1.0]), 0.0, EffectEnv::default()).img
@@ -473,8 +473,8 @@ mod tests {
     /// the new controls take values that keep the old look.
     #[test]
     fn old_fractal_noise_instances_upgrade() {
-        use effectcraft_project::build::Ids;
-        use effectcraft_project::{GroupKind, Property};
+        use aurora_project::build::Ids;
+        use aurora_project::{GroupKind, Property};
         let spec = crate::find("ec.noise.fractal").unwrap();
         let mut next = 1;
         let mut ids = Ids(&mut next);
